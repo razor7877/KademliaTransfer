@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 project(KademliaTransfer)
 
 include_directories(
-    src
+    include
 )
 
 add_executable(KademliaClient
