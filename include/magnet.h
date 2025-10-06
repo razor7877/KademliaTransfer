@@ -1,3 +1,5 @@
+#pragma once
+
 // Magnet URI implementation
 
 #include <openssl/sha.h>

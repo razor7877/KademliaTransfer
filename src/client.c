@@ -5,6 +5,7 @@
 #include <stdatomic.h>
 #include <stdbool.h>
 
+#include "network.h"
 #include "client.h"
 
 /**
@@ -29,7 +30,7 @@ void start_client() {
     printf("Starting P2P client\n");
 
     atomic_store(&thread_running, true);
-    int res = pthread_create(&p2p_thread, NULL, update_client, NULL);
+    int res = pthread_create(&p2p_thread, NULL, init_client, NULL);
     printf("pthread_create result: %d\n", res);
 
     if (res != 0) {
@@ -38,18 +39,22 @@ void start_client() {
     }
 }
 
-void* update_client(void* arg) {
-    pid_t tid = gettid();
+void* init_client(void* arg) {
+    init_network();
 
+    update_client();
+}
+
+void update_client() {
+    // Run until the main thread tells us to stop
     while (atomic_load(&thread_running)) {
-        //printf("Updating P2P client from secondary thread - TID: %lu\n", tid);
+        update_network();
     }
 
+    stop_network();
     atomic_store(&thread_request_stop, true);
 
     printf("Stopped P2P client (P2P thread)\n");
-
-    return NULL;
 }
 
 void stop_client() {

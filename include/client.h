@@ -11,10 +11,16 @@
 void start_client();
 
 /**
+ * @brief Entry point of the P2P client thread
+ * 
+ */
+void* init_client(void* arg);
+
+/**
  * @brief Update loop of the P2P client
  * 
  */
-void* update_client(void* arg);
+void update_client();
 
 /**
  * @brief Stops and cleans up the resources of the P2P client

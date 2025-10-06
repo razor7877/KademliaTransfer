@@ -1,3 +1,5 @@
+#pragma once
+
 #include <stddef.h>
 
 #include "shared.h"
@@ -20,4 +22,4 @@ void handle_http_request(char* contents, size_t length);
  * @param file The hash of the file to be downloaded
  * @return int 0 if it was successful, negative number otherwise
  */
-int download_http_file(Peer* peer, HashID* file);
+int download_http_file(struct Peer* peer, HashID* file);

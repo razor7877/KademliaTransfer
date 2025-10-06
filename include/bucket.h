@@ -1,3 +1,5 @@
+#pragma once
+
 // TODO : Buckets implementation
 // Functions for manipulating bucket contents (nearest neighbor find etc.)
 

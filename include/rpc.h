@@ -1,6 +1,6 @@
+#pragma once
 
 // Kademlia RPC functions implementation
-#pragma once
 #include <openssl/sha.h>
 #include <stdbool.h>
 #include <arpa/inet.h>
@@ -30,7 +30,7 @@ struct RPCPeer {
 struct RPCKeyValue {
   HashID key;
   size_t num_values;
-  RPCPeer values[K_VALUE];
+  struct RPCPeer values[K_VALUE];
 };
 
 struct RPCMessageHeader {
@@ -45,7 +45,7 @@ struct RPCPing {
 
 struct RPCStore {
   struct RPCMessageHeader header;
-  RPCKeyValue key_value;
+  struct RPCKeyValue key_value;
 };
 
 struct RPCFind {
@@ -61,14 +61,14 @@ struct RPCResponse {
 struct RPCFindValueResponse {
   struct RPCMessageHeader header;
   uint8_t found_key;
-  RPCKeyValue values;
+  struct RPCKeyValue values;
 };
 
 struct RPCFindNodeResponse {
   struct RPCMessageHeader header;
   uint8_t found_key;
   size_t num_closest;
-  RPCPeer closest[K_VALUE];
+  struct RPCPeer closest[K_VALUE];
 };
 
 #pragma pack(pop)

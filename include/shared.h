@@ -1,3 +1,5 @@
+#pragma once
+
 #include <stdio.h>
 #include <openssl/sha.h>
 #include <openssl/evp.h>
@@ -11,7 +13,7 @@ typedef unsigned char HashID[SHA256_DIGEST_LENGTH];
 typedef unsigned char PubKey[32];
 
 void die(int val, char *str);
-void recv_all(int fd, void* dst, size_t len);
-void recv_until(int fd, void* dst, size_t len, char* pattern, size_t pattern_len);
-void send_all(int fd, void* src, size_t len);
+ssize_t recv_all(int fd, void* dst, size_t len);
+ssize_t recv_until(int fd, void* dst, size_t len, const char* pattern, size_t pattern_len);
+ssize_t send_all(int fd, const void* src, size_t len);
 int min(const int a, const int b);
