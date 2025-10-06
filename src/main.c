@@ -1,19 +1,15 @@
 #include <stdio.h>
 
-#include "network.h"
+#include "client.h"
 
 int main(int argc, char** argv) {
-    printf("Hey\n");
-
-    init_network();
+    start_client();
 
     while (1) {
-        // Query user input ...
-        
-        update_network();
+        update_client();
     }
 
-    stop_network();
+    stop_client();
 
     return 0;
 }

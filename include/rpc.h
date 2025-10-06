@@ -71,3 +71,11 @@ struct RPCFindNodeResponse {
 };
 
 #pragma pack(pop)
+
+/**
+ * @brief Handles a RPC request
+ * 
+ * @param contents The RPC request packet
+ * @param length The length of the RPC request
+ */
+void handle_rpc_request(char* contents, size_t length);
