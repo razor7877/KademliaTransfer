@@ -83,6 +83,25 @@ struct FileMagnet {
 };
 
 /**
+ * @brief Create a magnet object from a file
+ * 
+ * @param filename A buffer pointing to the filename
+ * @param filename_len The length of the filename
+ * @param contents The contents of the file
+ * @param contents_len The length of the file contents
+ * @return struct FileMagnet* Returns a pointer to a new magnet
+ */
+struct FileMagnet* create_magnet(char* filename, size_t filename_len, char* contents, size_t contents_len);
+
+/**
+ * @brief Serializes the magnet data to URI format
+ * 
+ * @param magnet The magnet to be serialized
+ * @return char* Returns a pointer to a buffer containing the URI contents
+ */
+char* save_magnet_to_uri(struct FileMagnet* magnet);
+
+/**
  * @brief Parses the contents of a magnet from the URI representation
  * 
  * @param contents A buffer pointing to the UTF-8 URI representation

@@ -46,6 +46,7 @@ void cli_download_file() {
     }
 
     int res = download_file(magnet);
+    free_magnet(magnet);
 
     if (res == 0) {
         printf("File successfully downloaded!\n");
@@ -64,6 +65,47 @@ void cli_upload_file() {
         return;
     
     filename[strcspn(filename, "\n")] = '\00';
+
+    FILE* file = fopen(filename, "r");
+
+    if (file == NULL) {
+        printf("File does not exist! Please enter valid filename.\n");
+        return;
+    }
+
+    // Get size, allocate memory and read contents into the buffer
+    fseek(file, 0, SEEK_END);
+    long size = ftell(file);
+    fseek(file, 0, SEEK_SET);
+    
+    void* contents = malloc(size);
+
+    fread(contents, size, 1, file);
+    fclose(file);
+
+    struct FileMagnet* magnet = create_magnet(filename, strlen(filename), contents, size);
+
+    if (magnet == NULL) {
+        printf("Error while trying to create magnet link!\n");
+        return;
+    }
+
+    int res = upload_file(magnet);
+    
+    free(contents);
+
+    if (res == 0) {
+        printf("File successfully uploaded!\n");
+    }
+    else {
+        printf("Error while trying to upload the file! Error code: %d\n", res);
+    }
+}
+
+void cli_show_network_status() {
+    printf("Showing network status...\n");
+
+    show_network_status();
 }
 
 int main(int argc, char** argv) {
@@ -72,7 +114,7 @@ int main(int argc, char** argv) {
     bool running = true;
     char input[INPUT_SIZE] = {0};
     int choice = -1;
-    pid_t tid = gettid();
+    // pid_t tid = gettid();
 
     while (running) {
         //printf("Updating CLI - TID: %d\n", tid);
@@ -89,21 +131,26 @@ int main(int argc, char** argv) {
             continue;
         }
 
+        printf("\n");
+        
         input[strcspn(input, "\n")] = '\00';
 
         if (sscanf(input, "%d", &choice) != 1) {
-            printf("\nInvalid input! Please enter a number.\n");
+            printf("Invalid input! Please enter a number.\n");
             continue;
         }
 
         switch (choice) {
             case 1:
+                cli_show_network_status();
                 break;
 
             case 2:
+                cli_upload_file();
                 break;
 
             case 3:
+                cli_download_file();
                 break;
 
             case 4:
