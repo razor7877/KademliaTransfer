@@ -1,5 +1,7 @@
 #include "shared.h"
 
+#pragma once
+
 struct Peer;
 
 /**
