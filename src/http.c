@@ -61,8 +61,6 @@ static void send_http_file(struct pollfd* sock, const char* filename) {
 void handle_http_request(struct pollfd* sock, char* contents, size_t length) {
     printf("Handling HTTP request\n");
 
-    //printf("Contents:\n%s", contents);
-
     if (memcmp(contents, "GET ", 4) != 0) {
         send_all(sock->fd, method_not_allowed, strlen(method_not_allowed));
         return;

@@ -8,6 +8,18 @@
 #include "bucket.h"
 #include "shared.h"
 
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+
+#define MAX_RPC_PACKET_SIZE \
+    MAX(sizeof(struct RPCPing), \
+    MAX(sizeof(struct RPCStore), \
+    MAX(sizeof(struct RPCFind), \
+    MAX(sizeof(struct RPCResponse), \
+    MAX(sizeof(struct RPCFindValueResponse), \
+        sizeof(struct RPCFindNodeResponse))))))
+
+#define RPC_MAGIC "KDMT"
+
 #pragma pack(push, 1)
 
 enum RPCCallType {
@@ -79,4 +91,4 @@ struct RPCFindNodeResponse {
  * @param contents The RPC request packet
  * @param length The length of the RPC request
  */
-void handle_rpc_request(char* contents, size_t length);
+void handle_rpc_request(struct pollfd* sock, char* contents, size_t length);

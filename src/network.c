@@ -34,86 +34,29 @@ static int listen_fd = 0;
 static void get_rpc_request(struct pollfd* sock, char* buf) {
 	printf("Handling P2P request\n");
 
-	struct RPCMessageHeader header = {0};
 	// We already read the 4 bytes magic, read the rest of the header
-	int received = recv_all(sock->fd, &header, sizeof(header));
+	int received = recv_all(sock->fd, buf, sizeof(struct RPCMessageHeader));
 
-	printf("Packet size is: %d\n", header.packet_size);
+	// Interpret the data as RPC header
+	struct RPCMessageHeader* header = (struct RPCMessageHeader*)buf;
 
-	size_t expected_size = 0;
+	printf("Packet size is: %d\n", header->packet_size);
 
-	switch (header.call_type) {
-		case PING:
-			printf("Got RPC ping\n");
-			expected_size = sizeof(struct RPCPing);
-			break;
-		
-		case STORE:
-			printf("Got RPC store\n");
-			expected_size = sizeof(struct RPCStore);
-			break;
-
-		case FIND_NODE:
-			printf("Got RPC find node\n");
-			expected_size = sizeof(struct RPCFind);
-			break;
-
-		case FIND_VALUE:
-			printf("Got RPC find value\n");
-			expected_size = sizeof(struct RPCFind);
-			break;
-		
-		case PING_RESPONSE:
-			printf("Got RPC ping response\n");
-			expected_size = sizeof(struct RPCResponse);
-			break;
-
-		case STORE_RESPONSE:
-			printf("Got RPC store response\n");
-			expected_size = sizeof(struct RPCResponse);
-			break;
-
-		// Sizes here will actually depend on whether a key was found or not
-		case FIND_NODE_RESPONSE:
-			printf("Got RPC find node response\n");
-			expected_size = sizeof(struct RPCFindNodeResponse);
-			break;
-
-		case FIND_VALUE_RESPONSE:
-			printf("Got RPC find node response\n");
-			expected_size = sizeof(struct RPCFindNodeResponse);
-			break;
-
-		default:
-			printf("Got invalid RPC request!\n");
-			break;
-	}
-
-	printf("Claimed size is: %d - Expected size is: %ld\n", header.packet_size, expected_size);
-
-	if (header.packet_size != expected_size) {
-		printf("Claimed size doesn't match expected, discarding packet!\n");
+	if (header->packet_size > MAX_RPC_PACKET_SIZE) {
+		printf("Packet too large! Discarding.\n");
 		return;
 	}
 
-	void* rpc_packet = malloc(expected_size);
-
-	// Copy the already read header
-	memcpy(rpc_packet, &header, sizeof(header));
-
 	// Get the rest of the packet
-	received = recv_all(sock->fd, rpc_packet + sizeof(header), expected_size - sizeof(header));
+	received = recv_all(sock->fd, buf + sizeof(struct RPCMessageHeader), header->packet_size - sizeof(struct RPCMessageHeader));
 
 	if (received < 0) {
 		printf("Error while trying to read entire RPC request. Skipping...");
-		free(rpc_packet);
 		return;
 	}
 
 	// Pass the RPC packet to the RPC layer
-	handle_rpc_request(rpc_packet, expected_size);
-
-	free(rpc_packet);
+	handle_rpc_request(sock, buf, header->packet_size);
 }
 
 /**
@@ -136,6 +79,10 @@ static void get_http_request(struct pollfd* sock, char* buf) {
 	handle_http_request(sock, buf, received);
 }
 
+/**
+ * @brief Called in the network update loop. Accepts incoming connections
+ * 
+ */
 static void handle_incoming() {
 	// Accept incoming connections
 	if (sock_array[0].revents & POLLIN) {
@@ -167,6 +114,10 @@ static void handle_incoming() {
 	}
 }
 
+/**
+ * @brief Called in the network update loop. Handles requests from connected peers
+ * 
+ */
 static void handle_connected() {
 	// Handle existing connections
 	for (int i = 1; i < MAX_SOCK; i++) {
@@ -196,7 +147,8 @@ static void handle_connected() {
 				continue;
 			}
 
-			if (peeked == 4 && memcmp(peek_buf, "KDMT", 4) == 0)
+			// Dispatch depending on magic number
+			if (peeked == 4 && memcmp(peek_buf, RPC_MAGIC, 4) == 0)
 				get_rpc_request(&sock_array[i], buf);
 			else
 				get_http_request(&sock_array[i], buf);

@@ -41,14 +41,14 @@ def send_rpc_request(data: bytes):
         print(f"Sent {len(data)} bytes to {SERVER_IP}:{SERVER_PORT}")
 
         # Get response from peer
-        # try:
-        #     response = sock.recv(1024)
-        #     if response:
-        #         print(f"Received {len(response)} bytes: {response}")
-        #     else:
-        #         print("Connection closed by server.")
-        # except socket.timeout:
-        #     print("No response received.")
+        try:
+            response = sock.recv(1024)
+            if response:
+                print(f"Received {len(response)} bytes: {response}")
+            else:
+                print("Connection closed by server.")
+        except socket.timeout:
+            print("No response received.")
 
 if __name__ == "__main__":
     packet = create_ping_packet()
