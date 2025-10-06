@@ -43,3 +43,14 @@ void add_back(struct DList* list, struct Peer* peer) {
     list->size += 1;
   }
 }
+
+struct Peer* remove_front(struct DList* list) {
+  if (!list || !list->head) return (NULL);
+
+  struct DNode* head = list->head;
+  if (list->head->next) list->head->next->prev = NULL;
+  list->head = head->next;
+  struct Peer* head_peer = head->peer;
+  free(head);
+  return head_peer;
+}
