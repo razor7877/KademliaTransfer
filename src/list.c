@@ -1,5 +1,9 @@
 #include "list.h"
 
+#include <string.h>
+
+#include "peer.h"
+
 void add_front(struct DList* list, struct Peer* peer) {
   pointer_not_null(list, "Error in add_front the list is unitialized!\n");
   pointer_not_null(peer, "Error in add_front the peer is unitialized!\n");
@@ -52,6 +56,7 @@ struct Peer* remove_front(struct DList* list) {
   list->head = head->next;
   struct Peer* head_peer = head->peer;
   free(head);
+  list->size -= 1;
   return head_peer;
 }
 
@@ -63,5 +68,56 @@ struct Peer* remove_back(struct DList* list) {
   list->tail = tail->prev;
   struct Peer* tail_peer = tail->peer;
   free(tail);
+  list->size -= 1;
   return tail_peer;
+}
+
+/**
+ * @brief Calculate the XOR distance between two HashID
+ * @param result Buffer where the result is stored
+ * @param id1 First HashID
+ * @param id2 Second HashID
+ */
+static void dist_hash(HashID result, const HashID id1, const HashID id2) {
+  for (int i = 0; i < SHA256_DIGEST_LENGTH; i++) {
+    result[i] = id1[i] ^ id2[i];
+  }
+}
+
+/**
+ * @brief Compare two distances (produced by dist_hash)
+ *  It returns:
+ *      - -1 if dist1 < dist2
+ *      - 1 if dist1 > dist2
+ *      - 0 if dist1 = dist2
+ * @param dist1 First distance to compare
+ * @param dist2 Second distance to compare
+ * @return int Comparaison result: -1,0,1
+ */
+static int compare_distance(const HashID dist1, const HashID dist2) {
+  for (int i = 0; i < SHA256_DIGEST_LENGTH; i++) {
+    if (dist1[i] < dist2[i]) return -1;
+    if (dist1[i] > dist2[i]) return 1;
+  }
+  return 0;
+}
+
+struct Peer* find_nearest(const struct DList* list, const HashID* id) {
+  if (!list || !list->head) return NULL;
+
+  struct Peer* nearest = list->head->peer;
+  HashID nearest_dist = {0};
+  HashID current_dist = {0};
+  dist_hash(nearest_dist, nearest->peer_id, *id);
+  struct DNode* current = list->head->next;
+
+  while (current != NULL) {
+    dist_hash(current_dist, current->peer->peer_id, *id);
+    if (compare_distance(nearest_dist, current_dist) > 0) {
+      nearest = current->peer;
+      memcpy(nearest_dist, current_dist, SHA256_DIGEST_LENGTH);
+    }
+    current = current->next;
+  }
+  return nearest;
 }
