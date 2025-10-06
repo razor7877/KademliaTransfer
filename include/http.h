@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stddef.h>
+#include <poll.h>
 
 #include "shared.h"
 #include "bucket.h"
@@ -13,7 +14,7 @@
  * @param contents The contents of the HTTP request
  * @param length The length of the HTTP packet
  */
-void handle_http_request(char* contents, size_t length);
+void handle_http_request(struct pollfd* sock, char* contents, size_t length);
 
 /**
  * @brief Downloads a file by hash from the HTTP server served by peer

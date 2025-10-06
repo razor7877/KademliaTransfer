@@ -11,4 +11,6 @@ add_executable(KademliaClient
     src/client.c
     src/magnet.c
     src/network.c
+    src/rpc.c
+    src/http.c
 )

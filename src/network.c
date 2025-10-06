@@ -31,14 +31,12 @@ static int listen_fd = 0;
  * @param buf A pointer to the buffer where data can be read into
  * @param buf_index Current index into the buffer
  */
-static void get_rpc_request(struct pollfd* sock, char* buf, int buf_index) {
+static void get_rpc_request(struct pollfd* sock, char* buf) {
 	printf("Handling P2P request\n");
 
 	struct RPCMessageHeader header = {0};
 	// We already read the 4 bytes magic, read the rest of the header
-	int received = recv_all(sock->fd, buf + buf_index, 8);
-
-	memcpy(&header, buf, sizeof(struct RPCMessageHeader));
+	int received = recv_all(sock->fd, &header, sizeof(header));
 
 	printf("Packet size is: %d\n", header.packet_size);
 
@@ -97,6 +95,25 @@ static void get_rpc_request(struct pollfd* sock, char* buf, int buf_index) {
 		printf("Claimed size doesn't match expected, discarding packet!\n");
 		return;
 	}
+
+	void* rpc_packet = malloc(expected_size);
+
+	// Copy the already read header
+	memcpy(rpc_packet, &header, sizeof(header));
+
+	// Get the rest of the packet
+	received = recv_all(sock->fd, rpc_packet + sizeof(header), expected_size - sizeof(header));
+
+	if (received < 0) {
+		printf("Error while trying to read entire RPC request. Skipping...");
+		free(rpc_packet);
+		return;
+	}
+
+	// Pass the RPC packet to the RPC layer
+	handle_rpc_request(rpc_packet, expected_size);
+
+	free(rpc_packet);
 }
 
 /**
@@ -106,31 +123,17 @@ static void get_rpc_request(struct pollfd* sock, char* buf, int buf_index) {
  * @param buf A pointer to the buffer where data can be read into
  * @param buf_index Current index into the buffer
  */
-static void get_http_request(struct pollfd* sock, char* buf, int buf_index) {
+static void get_http_request(struct pollfd* sock, char* buf) {
 	printf("Handling HTTP request\n");
 	
-	recv_until(sock->fd, buf, BUF_SIZE, http_pattern, strlen(http_pattern));
-	printf("HTTP Request: %s\n", buf);
+	ssize_t received = recv_until(sock->fd, buf, BUF_SIZE, http_pattern, strlen(http_pattern));
 
-	sock->revents = 0;
+	if (received < 0) {
+		printf("Error while trying to read entire HTTP request. Skipping...");
+		return;
+	}
 
-	const char body[] =
-		"<!DOCTYPE html>\r\n"
-		"<html>\r\n"
-		"<head><title>Hello</title></head>\r\n"
-		"<body>Hello, world!</body>\r\n"
-		"</html>\r\n";
-
-	char header[256];
-	snprintf(header, sizeof(header),
-		"HTTP/1.1 200 OK\r\n"
-		"Content-Type: text/html; charset=UTF-8\r\n"
-		"Content-Length: %zu\r\n"
-		"\r\n",
-		strlen(body));
-
-	send_all(sock->fd, header, strlen(header));
-	send_all(sock->fd, body, strlen(body));
+	handle_http_request(sock, buf, received);
 }
 
 static void handle_incoming() {
@@ -177,22 +180,28 @@ static void handle_connected() {
 
 		// Handle message from connection
 		if (sock_array[i].revents & POLLIN) {
-			int buf_index = 0;
-			
-            int received = recv_all(sock_array[i].fd, buf, 4);
+			char peek_buf[4] = {0};
+			ssize_t peeked = recv_all_peek(sock_array[i].fd, peek_buf, sizeof(peek_buf));
 
-			if (received < 0) {
-				printf("Error while trying to handle request. Skipping...\n");
+			if (peeked <= 0) {
+				if (peeked < 0)
+					perror("recv_all_peek");
+				else
+					printf("Connection closed on fd %d\n", sock_array[i].fd);
+				
+				close(sock_array[i].fd);
+				sock_array[i].fd = -1;
+				sock_array[i].events = 0;
+				sock_array[i].revents = 0;
 				continue;
 			}
 
-			buf_index += received;
+			if (peeked == 4 && memcmp(peek_buf, "KDMT", 4) == 0)
+				get_rpc_request(&sock_array[i], buf);
+			else
+				get_http_request(&sock_array[i], buf);
 
-			// Check the magic to choose how to dispatch the request
-            if (strcmp(buf, "KDMT") == 0)
-                get_rpc_request(&sock_array[i], buf, buf_index);
-            else
-				get_http_request(&sock_array[i], buf, buf_index);
+			sock_array[i].revents = 0;
 		}
 	}
 }
@@ -231,7 +240,6 @@ void init_network() {
 
 void update_network() {
     int active_fd = poll(sock_array, MAX_SOCK, 50);
-    //printf("Number of active socket - %d\n", active_fd);
 
     // Accept any new connections
     handle_incoming();

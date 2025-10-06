@@ -39,6 +39,32 @@ ssize_t recv_all(int fd, void* dst, size_t len) {
 	return ret;
 }
 
+ssize_t recv_all_peek(int fd, void* dst, size_t len) {
+    size_t nb_read = 0;
+    ssize_t ret = 0;
+
+    while (nb_read < len) {
+        ret = recv(fd, (char*)dst + nb_read, len - nb_read, MSG_PEEK);
+
+        if (ret < 0) {
+			// Retry
+            if (errno == EINTR)
+                continue;
+
+            perror("recv(MSG_PEEK)");
+            return -1;
+        }
+
+        // EOF
+        if (ret == 0)
+            break;
+
+        nb_read += ret;
+    }
+
+    return nb_read;
+}
+
 ssize_t recv_until(int fd, void* dst, size_t buf_len, const char* pattern, size_t pattern_len) {
 	size_t nb_read = 0;
 	ssize_t ret = 0;
