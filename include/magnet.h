@@ -3,6 +3,7 @@
 #include <openssl/sha.h>
 
 #include "bucket.h"
+#include "shared.h"
 
 struct Range {
     int begin;
@@ -18,7 +19,7 @@ struct FileMagnet {
      * @brief The SHA-256 hash of the file
      * 
      */
-    unsigned char file_hash[SHA256_DIGEST_LENGTH];
+    HashID file_hash;
 
     /**
      * @brief Filename to display to the user

@@ -6,16 +6,22 @@
 #include <openssl/sha.h>
 #include <openssl/evp.h>
 
+#include "shared.h"
+#include "list.h"
+
+#define BUCKET_SIZE K_VALUE
+#define BUCKET_COUNT 8
+
 /**
  * @brief Represents a single peer in the network
  * 
  */
 struct Peer {
     /**
-     * @brief The 256 identifier for the node
+     * @brief The 256 bit identifier for the node
      * 
      */
-    unsigned char peer_id[SHA256_DIGEST_LENGTH];
+    HashID peer_id;
 
     /**
      * @brief The network information for communicating with the node
@@ -24,8 +30,16 @@ struct Peer {
     struct sockaddr_in peer_addr;
 
     /**
+     * @brief When this peer was last seen
+     * 
+     */
+    time_t last_seen;
+
+    /**
      * @brief The public key of the node
      * 
      */
     EVP_PKEY* peer_pub_key;
 };
+
+typedef struct DList Buckets[BUCKET_COUNT];
