@@ -71,3 +71,5 @@ ssize_t send_all(int fd, const void* src, size_t len);
  * @return int Returns the minimum value between a and b
  */
 int min(const int a, const int b);
+
+void pointer_not_null(void* ptr, const char* message);
