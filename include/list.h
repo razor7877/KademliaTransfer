@@ -82,7 +82,7 @@ struct Peer* remove_front(struct DList* list);
  * @param list The list from which to remove a node
  * @return Peer* The pointer to the popped node, or NULL if there were none
  */
-struct Peer* remove_back(struct DList* list, struct Peer* peer);
+struct Peer* remove_back(struct DList* list);
 
 /**
  * @brief Finds the nearest node to a hash in the linked list

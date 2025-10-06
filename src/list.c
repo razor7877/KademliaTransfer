@@ -54,3 +54,14 @@ struct Peer* remove_front(struct DList* list) {
   free(head);
   return head_peer;
 }
+
+struct Peer* remove_back(struct DList* list) {
+  if (!list || !list->tail) return (NULL);
+
+  struct DNode* tail = list->tail;
+  if (list->tail->prev) list->tail->prev->next = NULL;
+  list->tail = tail->prev;
+  struct Peer* tail_peer = tail->peer;
+  free(tail);
+  return tail_peer;
+}
