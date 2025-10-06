@@ -3,6 +3,7 @@
 #pragma once
 #include <openssl/sha.h>
 #include <stdbool.h>
+#include <arpa/inet.h>
 
 #include "bucket.h"
 #include "shared.h"

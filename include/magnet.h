@@ -89,11 +89,11 @@ struct FileMagnet {
  * @param len The length of the URI representation
  * @return FileMagnet* Returns a pointer to the parsed structure, caller is responsible for freeing
  */
-FileMagnet* parse_magnet_from_uri(char* contents, size_t len);
+struct FileMagnet* parse_magnet_from_uri(char* contents, size_t len);
 
 /**
  * @brief Frees the resources allocated for a magnet
  * 
  * @param magnet The magnet for which the resources should be freed
  */
-void free_magnet(FileMagnet* magnet);
+void free_magnet(struct FileMagnet* magnet);

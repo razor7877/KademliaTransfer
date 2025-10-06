@@ -11,19 +11,19 @@ struct DNode {
      * @brief The value stored for the node
      * 
      */
-    Peer* peer;
+    struct Peer* peer;
 
     /**
      * @brief The next node in the list, or NULL if there are none
      * 
      */
-    DNode* next;
+    struct DNode* next;
 
     /**
      * @brief The previous node in the list, or NULL if there are none
      * 
      */
-    DNode* prev;
+    struct DNode* prev;
 };
 
 /**
@@ -41,13 +41,13 @@ struct DList {
      * @brief The head of the list
      * 
      */
-    DNode* head;
+    struct DNode* head;
 
     /**
      * @brief The tail of the list
      * 
      */
-    DNode* tail;
+    struct DNode* tail;
 };
 
 /**
@@ -56,7 +56,7 @@ struct DList {
  * @param list The list to which to add the node
  * @param peer The peer to add to the list
  */
-void add_front(DList* list, Peer* peer);
+void add_front(struct DList* list, struct Peer* peer);
 
 /**
  * @brief Adds a node to the tail of the linked list
@@ -64,7 +64,7 @@ void add_front(DList* list, Peer* peer);
  * @param list The list to which to add the node
  * @param peer The peer to add to the list
  */
-void add_back(DList* list, Peer* peer);
+void add_back(struct DList* list, struct Peer* peer);
 
 /**
  * @brief Removes the node at the front of the list
@@ -72,7 +72,7 @@ void add_back(DList* list, Peer* peer);
  * @param list The list from which to remove a node
  * @return Peer* The pointer to the popped node, or NULL if there were none
  */
-Peer* remove_front(DList* list);
+struct Peer* remove_front(struct DList* list);
 
 /**
  * @brief Removes the node at the back of the list
@@ -80,7 +80,7 @@ Peer* remove_front(DList* list);
  * @param list The list from which to remove a node
  * @return Peer* The pointer to the popped node, or NULL if there were none
  */
-Peer* remove_back(DList* list, Peer* peer);
+struct Peer* remove_back(struct DList* list, struct Peer* peer);
 
 /**
  * @brief Finds the nearest node to a hash in the linked list
@@ -89,4 +89,4 @@ Peer* remove_back(DList* list, Peer* peer);
  * @param id The id that should be matched as closely as possible
  * @return Peer* A pointer to the nearest node in the list, or NULL if there are none
  */
-Peer* find_nearest(const DList* list, const HashID* id);
+struct Peer* find_nearest(const struct DList* list, const HashID* id);

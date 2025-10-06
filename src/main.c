@@ -1,12 +1,120 @@
 #include <stdio.h>
+#include <stdbool.h>
+#include <string.h>
+#include <stdio.h>
 
 #include "client.h"
 
+#define INPUT_SIZE 256
+#define FILENAME_SIZE 512
+
+void cli_download_file() {
+    char magnet_link[FILENAME_SIZE] = {0};
+
+    printf("Enter filename of magnet to download: ");
+
+    if (fgets(magnet_link, sizeof(magnet_link), stdin) == NULL)
+        return;
+
+    magnet_link[strcspn(magnet_link, "\n")] = '\00';
+
+    // Load magnet file contents from disk
+    FILE* file = fopen(magnet_link, "r");
+
+    if (file == NULL) {
+        printf("File does not exist! Please enter valid filename.\n");
+        return;
+    }
+
+    // Get size, allocate memory and read contents into the buffer
+    fseek(file, 0, SEEK_END);
+    long size = ftell(file);
+    fseek(file, 0, SEEK_SET);
+    
+    void* contents = malloc(size);
+
+    fread(contents, size, 1, file);
+    fclose(file);
+
+    struct FileMagnet* magnet = parse_magnet_from_uri(contents, size);
+
+    free(contents);
+
+    if (magnet == NULL) {
+        printf("Error while parsing magnet link contents! Please use a valid magnet file.\n");
+        return;
+    }
+
+    int res = download_file(magnet);
+
+    if (res == 0) {
+        printf("File successfully downloaded!\n");
+    }
+    else {
+        printf("Error while trying to download the file! Error code: %d\n", res);
+    }
+}
+
+void cli_upload_file() {
+    char filename[FILENAME_SIZE] = {0};
+
+    printf("Enter filename to upload: ");
+
+    if (fgets(filename, sizeof(filename), stdin) == NULL)
+        return;
+    
+    filename[strcspn(filename, "\n")] = '\00';
+}
+
 int main(int argc, char** argv) {
     start_client();
+    
+    bool running = true;
+    char input[INPUT_SIZE] = {0};
+    int choice = -1;
+    pid_t tid = gettid();
 
-    while (1) {
-        update_client();
+    while (running) {
+        //printf("Updating CLI - TID: %d\n", tid);
+
+        printf("\n===== KademliaTransfer Menu =====\n");
+        printf("1. Show network status\n");
+        printf("2. Upload file\n");
+        printf("3. Download file\n");
+        printf("4. Exit\n");
+        printf("Enter your choice: ");
+
+        if (fgets(input, sizeof(input), stdin) == NULL) {
+            printf("\nError reading input\n");
+            continue;
+        }
+
+        input[strcspn(input, "\n")] = '\00';
+
+        if (sscanf(input, "%d", &choice) != 1) {
+            printf("\nInvalid input! Please enter a number.\n");
+            continue;
+        }
+
+        switch (choice) {
+            case 1:
+                break;
+
+            case 2:
+                break;
+
+            case 3:
+                break;
+
+            case 4:
+                printf("Exiting program...\n");
+                running = false;
+                break;
+
+            default:
+                printf("Invalid choice! Please select 1-4.\n");
+                break;
+        }
     }
 
     stop_client();

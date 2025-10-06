@@ -8,4 +8,6 @@ include_directories(
 add_executable(KademliaClient
     src/main.c
     src/shared.c
+    src/client.c
+    src/magnet.c
 )
