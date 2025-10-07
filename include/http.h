@@ -6,7 +6,13 @@
 #include "shared.h"
 #include "bucket.h"
 
-// Implementation of HTTP client server interactions
+/**
+ * @file http.h
+ * @brief Implementation of HTTP client server interactions
+ * 
+ * This file defines functions for handling incoming HTTP request passed on by the network layer, as well as downloading files from other peers
+ * 
+ */
 
 /**
  * @brief Handles a HTTP request

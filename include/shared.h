@@ -10,6 +10,14 @@
 
 #define K_VALUE 2
 
+/**
+ * @file shared.h
+ * @brief Shared Functions
+ * 
+ * This file defines a number of useful functions and constants that may be reused anywhere else in the codebase
+ * 
+ */
+
 typedef unsigned char HashID[SHA256_DIGEST_LENGTH];
 typedef unsigned char PubKey[32];
 

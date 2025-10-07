@@ -4,6 +4,14 @@
 
 #pragma once
 
+/**
+ * @file list.h
+ * @brief Data structures and functions for manipulating doubly-linked lists
+ * 
+ * Each bucket in the Kademlia k-buckets structure consists of a doubly-linked list to allow quick insertion and removal from the head and tail
+ * 
+ */
+
 struct Peer;
 
 /**

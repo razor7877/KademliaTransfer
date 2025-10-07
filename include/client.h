@@ -2,7 +2,13 @@
 
 #include "magnet.h"
 
-// Interface between frontend (CLI, GUI) and the P2P network code
+/**
+ * @file client.h
+ * @brief Interface between frontend (CLI, GUI) and the P2P client code
+ * 
+ * This file defines the high-level functions that may called by the application frontend, to set up the P2P client and interact with it
+ * 
+ */
 
 /**
  * @brief Initializes the state of the P2P client which runs on its own thread

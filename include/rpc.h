@@ -8,6 +8,15 @@
 #include "bucket.h"
 #include "shared.h"
 
+/**
+ * @file rpc.h
+ * @brief Remote Procedure Calls Protocol
+ * 
+ * This file defines all the main structures and functions used for the P2P peer discovery and communication.
+ * It defines the structure of the different Kademlia packets, and how data such as peer information should be serialized.
+ * 
+ */
+
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
 #define MAX_RPC_PACKET_SIZE \

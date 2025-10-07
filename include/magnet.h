@@ -1,11 +1,18 @@
 #pragma once
 
-// Magnet URI implementation
-
 #include <openssl/sha.h>
 
 #include "bucket.h"
 #include "shared.h"
+
+/**
+ * @file magnet.h
+ * @brief Magnet URI implementation
+ * 
+ * This file defines structures and functions for the manipulation of magnet URIs. This follows the magnet URI standard.
+ * It allows creating new magnets from files, as well as exporting/importing magnets to and from files.
+ * 
+ */
 
 struct Range {
     int begin;
