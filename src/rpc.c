@@ -1,9 +1,10 @@
 #include <poll.h>
 
 #include "rpc.h"
+#include "log.h"
 
 static void handle_ping(struct pollfd* sock, struct RPCPing* data) {
-    printf("Handling RPC ping\n");
+    log_msg(LOG_DEBUG, "Handling RPC ping\n");
 
     struct RPCResponse response = {
         .header = {
@@ -18,19 +19,19 @@ static void handle_ping(struct pollfd* sock, struct RPCPing* data) {
 }
 
 static void handle_store(struct pollfd* sock, struct RPCStore* data) {
-    printf("Handling RPC store\n");
+    log_msg(LOG_DEBUG, "Handling RPC store\n");
 }
 
 static void handle_find_node(struct pollfd* sock, struct RPCFind* data) {
-    printf("Handling RPC find node\n");
+    log_msg(LOG_DEBUG, "Handling RPC find node\n");
 }
 
 static void handle_find_value(struct pollfd* sock, struct RPCFind* data) {
-    printf("Handling RPC find value\n");
+    log_msg(LOG_DEBUG, "Handling RPC find value\n");
 }
 
 void handle_rpc_request(struct pollfd* sock, char* contents, size_t length) {
-    printf("Handling RPC request in RPC layer\n");
+    log_msg(LOG_DEBUG, "Handling RPC request in RPC layer\n");
 
     size_t expected_size = 0;
 
@@ -43,14 +44,14 @@ void handle_rpc_request(struct pollfd* sock, char* contents, size_t length) {
 		case FIND_VALUE: expected_size = sizeof(struct RPCFind); break;
 
 		default:
-			printf("Got invalid RPC request!\n");
+			log_msg(LOG_ERROR, "Got invalid RPC request!\n");
             return;
 	}
 
-	printf("Claimed size is: %d - Expected size is: %ld\n", header->packet_size, expected_size);
+	log_msg(LOG_DEBUG, "Claimed size is: %d - Expected size is: %ld\n", header->packet_size, expected_size);
 
 	if (header->packet_size != expected_size) {
-		printf("Claimed size doesn't match expected, discarding packet!\n");
+		log_msg(LOG_ERROR, "Claimed size doesn't match expected, discarding packet!\n");
 		return;
 	}
 

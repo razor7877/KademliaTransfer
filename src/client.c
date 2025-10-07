@@ -8,6 +8,7 @@
 #include "network.h"
 #include "client.h"
 #include "command.h"
+#include "log.h"
 
 /**
  * @brief This gets set when the main thread requests the P2P thread to stop its execution
@@ -34,7 +35,7 @@ pthread_t p2p_thread;
 struct CommandQueue commands = {0};
 
 int start_client() {
-    printf("Starting P2P client\n");
+    log_msg(LOG_INFO, "Starting P2P client");
 
     // Init command queue
     if (queue_init(&commands) != 0) {
@@ -45,7 +46,7 @@ int start_client() {
     // Start P2P client thread
     atomic_store(&thread_running, true);
     int res = pthread_create(&p2p_thread, NULL, init_client, NULL);
-    printf("pthread_create result: %d\n", res);
+    log_msg(LOG_INFO, "pthread_create result: %d", res);
 
     if (res != 0) {
         perror("pthread_create failed");
@@ -57,6 +58,9 @@ int start_client() {
 }
 
 void* init_client(void* arg) {
+    // We are on the secondary thread, set a specific log color for this one
+    log_set_thread_color(LOG_COLOR_MAGENTA);
+
     init_network();
 
     update_client();
@@ -71,15 +75,15 @@ void update_client() {
     stop_network();
     atomic_store(&thread_request_stop, true);
 
-    printf("Stopped P2P client (P2P thread)\n");
+    log_msg(LOG_INFO, "Stopped P2P client (P2P thread)");
 }
 
 void stop_client() {
-    printf("Stopping P2P client\n");
+    log_msg(LOG_INFO, "Stopping P2P client");
     atomic_store(&thread_running, false);
 
     pthread_join(p2p_thread, NULL);
-    printf("Stopped P2P client (main thread)\n");
+    log_msg(LOG_INFO, "Stopped P2P client (main thread)");
 
     queue_destroy(&commands);
 }
@@ -107,7 +111,7 @@ int upload_file(struct FileMagnet* file) {
 }
 
 void show_network_status() {
-    printf("Showing network status\n");
+    log_msg(LOG_INFO, "Showing network status");
 
     struct Command c = {
         .cmd_type = CMD_SHOW_STATUS,

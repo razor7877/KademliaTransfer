@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include "log.h"
+
 void die(int val, char * str) {
 	if (val < 0) {
 		perror(str);
@@ -130,7 +132,7 @@ int min(const int a, const int b) {
 
 void pointer_not_null(void * ptr, const char * message) {
 	if (!ptr) {
-		fprintf(stderr, message);
+		log_msg(LOG_ERROR, message);
 		exit(EXIT_FAILURE);
 	}
 }

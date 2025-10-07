@@ -4,6 +4,7 @@
 #include <stdio.h>
 
 #include "client.h"
+#include "log.h"
 
 #define INPUT_SIZE 256
 #define FILENAME_SIZE 512
@@ -22,7 +23,7 @@ void cli_download_file() {
     FILE* file = fopen(magnet_link, "r");
 
     if (file == NULL) {
-        printf("File does not exist! Please enter valid filename.\n");
+        log_msg(LOG_ERROR, "File does not exist! Please enter valid filename.\n");
         return;
     }
 
@@ -41,7 +42,7 @@ void cli_download_file() {
     free(contents);
 
     if (magnet == NULL) {
-        printf("Error while parsing magnet link contents! Please use a valid magnet file.\n");
+        log_msg(LOG_ERROR, "Error while parsing magnet link contents! Please use a valid magnet file.\n");
         return;
     }
 
@@ -49,10 +50,10 @@ void cli_download_file() {
     free_magnet(magnet);
 
     if (res == 0) {
-        printf("File successfully downloaded!\n");
+        log_msg(LOG_INFO, "File successfully downloaded!\n");
     }
     else {
-        printf("Error while trying to download the file! Error code: %d\n", res);
+        log_msg(LOG_ERROR, "Error while trying to download the file! Error code: %d\n", res);
     }
 }
 
@@ -69,7 +70,7 @@ void cli_upload_file() {
     FILE* file = fopen(filename, "r");
 
     if (file == NULL) {
-        printf("File does not exist! Please enter valid filename.\n");
+        log_msg(LOG_ERROR, "File does not exist! Please enter valid filename.\n");
         return;
     }
 
@@ -86,7 +87,7 @@ void cli_upload_file() {
     struct FileMagnet* magnet = create_magnet(filename, strlen(filename), contents, size);
 
     if (magnet == NULL) {
-        printf("Error while trying to create magnet link!\n");
+        log_msg(LOG_ERROR, "Error while trying to create magnet link!\n");
         return;
     }
 
@@ -95,10 +96,10 @@ void cli_upload_file() {
     free(contents);
 
     if (res == 0) {
-        printf("File successfully uploaded!\n");
+        log_msg(LOG_INFO, "File successfully uploaded!\n");
     }
     else {
-        printf("Error while trying to upload the file! Error code: %d\n", res);
+        log_msg(LOG_ERROR, "Error while trying to upload the file! Error code: %d\n", res);
     }
 }
 

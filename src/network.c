@@ -15,12 +15,13 @@
 #include "rpc.h"
 #include "client.h"
 #include "command.h"
+#include "log.h"
 
 #define MAX_WAIT_CON 5
 #define MAX_SOCK 128
 #define SERVER_PORT 8182
 
-static const char http_pattern[] = "\r\n\r\n";
+static const char http_pattern[] = "\r\r";
 
 static struct pollfd sock_array[MAX_SOCK] = {0};
 static char buf[BUF_SIZE] = {0};
@@ -34,7 +35,7 @@ static int listen_fd = 0;
  * @param buf_index Current index into the buffer
  */
 static void get_rpc_request(struct pollfd* sock, char* buf) {
-	printf("Handling P2P request\n");
+	log_msg(LOG_INFO, "Handling P2P request");
 
 	// We already read the 4 bytes magic, read the rest of the header
 	int received = recv_all(sock->fd, buf, sizeof(struct RPCMessageHeader));
@@ -42,10 +43,10 @@ static void get_rpc_request(struct pollfd* sock, char* buf) {
 	// Interpret the data as RPC header
 	struct RPCMessageHeader* header = (struct RPCMessageHeader*)buf;
 
-	printf("Packet size is: %d\n", header->packet_size);
+	log_msg(LOG_INFO, "Packet size is: %d", header->packet_size);
 
 	if (header->packet_size > MAX_RPC_PACKET_SIZE) {
-		printf("Packet too large! Discarding.\n");
+		log_msg(LOG_ERROR, "Packet too large! Discarding.");
 		return;
 	}
 
@@ -53,7 +54,7 @@ static void get_rpc_request(struct pollfd* sock, char* buf) {
 	received = recv_all(sock->fd, buf + sizeof(struct RPCMessageHeader), header->packet_size - sizeof(struct RPCMessageHeader));
 
 	if (received < 0) {
-		printf("Error while trying to read entire RPC request. Skipping...");
+		log_msg(LOG_ERROR, "Error while trying to read entire RPC request. Skipping...");
 		return;
 	}
 
@@ -69,12 +70,12 @@ static void get_rpc_request(struct pollfd* sock, char* buf) {
  * @param buf_index Current index into the buffer
  */
 static void get_http_request(struct pollfd* sock, char* buf) {
-	printf("Handling HTTP request\n");
+	log_msg(LOG_INFO, "Handling HTTP request");
 	
 	ssize_t received = recv_until(sock->fd, buf, BUF_SIZE, http_pattern, strlen(http_pattern));
 
 	if (received < 0) {
-		printf("Error while trying to read entire HTTP request. Skipping...");
+		log_msg(LOG_ERROR, "Error while trying to read entire HTTP request. Skipping...");
 		return;
 	}
 
@@ -88,7 +89,7 @@ static void get_http_request(struct pollfd* sock, char* buf) {
 static void handle_incoming() {
 	// Accept incoming connections
 	if (sock_array[0].revents & POLLIN) {
-		printf("Accepting connection\n");
+		log_msg(LOG_INFO, "Accepting connection");
 		struct sockaddr_in client_addr = {0};
 		socklen_t size = sizeof(client_addr);
 
@@ -101,8 +102,8 @@ static void handle_incoming() {
 				sock_array[i].fd = new_fd;
 				sock_array[i].events = POLLIN;
 				sock_array[i].revents = 0;
-				printf("Accepted connection with fd: %d\n", new_fd);
-				printf("Stored at index: %d\n", i);
+				log_msg(LOG_DEBUG, "Accepted connection with fd: %d", new_fd);
+				log_msg(LOG_DEBUG, "Stored at index: %d", i);
 			}
 			else {
 				perror("Not enough space in buffer to allocate new connection");
@@ -140,7 +141,7 @@ static void handle_connected() {
 				if (peeked < 0)
 					perror("recv_all_peek");
 				else
-					printf("Connection closed on fd %d\n", sock_array[i].fd);
+					log_msg(LOG_DEBUG, "Connection closed on fd %d", sock_array[i].fd);
 				
 				close(sock_array[i].fd);
 				sock_array[i].fd = -1;
@@ -168,32 +169,32 @@ static void handle_pending() {
 	while (commands.count > 0) {
 		queue_pop(&commands, &cmd);
 
-		printf("Handling command from P2P client\n");
+		log_msg(LOG_DEBUG, "Handling command from P2P client");
 
 		switch (cmd.cmd_type) {
 			case CMD_SHOW_STATUS:
-				printf("Show status\n");
+				log_msg(LOG_DEBUG, "Show status");
 				break;
 			
 			case CMD_UPLOAD:
-				printf("Upload file\n");
+				log_msg(LOG_DEBUG, "Upload file");
 				break;
 
 			case CMD_DOWNLOAD:
-				printf("Download file\n");
+				log_msg(LOG_DEBUG, "Download file");
 				break;
 
 			default:
-				printf("Unknown command\n");
+				log_msg(LOG_DEBUG, "Unknown command");
 				break;
 		}
 	}
 
-	if (had_commands) printf("Finished handling commands\n");
+	if (had_commands) log_msg(LOG_DEBUG, "Finished handling commands");
 }
 
 void init_network() {
-    printf("Initializing network stack\n");
+    log_msg(LOG_DEBUG, "Initializing network stack");
 
     listen_fd = socket(AF_INET, SOCK_STREAM, 0);
 	die(listen_fd, "socket");
@@ -213,7 +214,7 @@ void init_network() {
 	ret = listen(listen_fd, MAX_WAIT_CON);
 	die(ret, "listen");
 
-	printf("Server is listening on port %d...\n", SERVER_PORT);
+	log_msg(LOG_DEBUG, "Server is listening on port %d...", SERVER_PORT);
 
 	// Initialize listen socket
 	sock_array[0].fd = listen_fd;
@@ -238,5 +239,5 @@ void update_network() {
 }
 
 void stop_network() {
-    printf("Stopping network stack\n");
+    log_msg(LOG_INFO, "Stopping network stack");
 }

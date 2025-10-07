@@ -15,6 +15,7 @@ add_executable(KademliaClient
     src/http.c
     src/list.c
     src/command.c
+    src/log.c
 )
 
 # Doxygen configuration
