@@ -3,11 +3,11 @@
 #include <regex.h>
 #include <string.h>
 
-static size_t sha256_file(const char* filename, HashID* id) {
+static int sha256_file(const char* filename, HashID* id) {
   FILE* file = fopen(filename, "rb");
   if (!file) return -1;
-  size_t bytes_read = 0;
-  size_t file_size = 0;
+  int bytes_read = 0;
+  int file_size = 0;
   unsigned char block[SHA256_BLOCK_SIZE];
   SHA256_CTX ctx;
 
@@ -17,9 +17,9 @@ static size_t sha256_file(const char* filename, HashID* id) {
     SHA256_Update(&ctx, block, bytes_read);
     file_size += bytes_read;
   }
-  if (ferror(file)) return NULL;
+  if (ferror(file)) return -1;
 
-  SHA256_Final(id, &ctx);
+  SHA256_Final((unsigned char*)id, &ctx);
   fclose(file);
   return file_size;
 }
@@ -31,7 +31,7 @@ struct FileMagnet* create_magnet(const char* filename, size_t filename_len) {
   pointer_not_null(new_magnet,
                    "Error in create_magnet the new_magnet alloc failed!\n");
 
-  size_t contents_len = sha256_file(filename, new_magnet->file_hash);
+  int contents_len = sha256_file(filename, &new_magnet->file_hash);
   if (contents_len == -1) {
     free_magnet(new_magnet);
     return NULL;
@@ -96,7 +96,7 @@ char* save_magnet_to_uri(struct FileMagnet* magnet) {
 }
 
 struct FileMagnet* parse_magnet_from_uri(char* contents, size_t len) {
-  if (len < 1 | !contents) return NULL;
+  if (len < 1 || !contents) return NULL;
 
   regex_t match;
   regmatch_t matches[3];
