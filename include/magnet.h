@@ -4,7 +4,7 @@
 
 #include "bucket.h"
 #include "shared.h"
-
+#define SHA256_BLOCK_SIZE 4096
 struct Range {
   int begin;
   int end;
@@ -92,8 +92,7 @@ struct FileMagnet {
  * @param contents_len The length of the file contents
  * @return struct FileMagnet* Returns a pointer to a new magnet
  */
-struct FileMagnet* create_magnet(char* filename, size_t filename_len,
-                                 char* contents, size_t contents_len);
+struct FileMagnet* create_magnet(const char* filename, size_t filename_len);
 
 /**
  * @brief Serializes the magnet data to URI format
