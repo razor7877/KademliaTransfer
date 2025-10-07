@@ -13,6 +13,8 @@
 #include "shared.h"
 #include "http.h"
 #include "rpc.h"
+#include "client.h"
+#include "command.h"
 
 #define MAX_WAIT_CON 5
 #define MAX_SOCK 128
@@ -158,6 +160,38 @@ static void handle_connected() {
 	}
 }
 
+static void handle_pending() {
+	struct Command cmd = {0};
+
+	bool had_commands = commands.count > 0;
+
+	while (commands.count > 0) {
+		queue_pop(&commands, &cmd);
+
+		printf("Handling command from P2P client\n");
+
+		switch (cmd.cmd_type) {
+			case CMD_SHOW_STATUS:
+				printf("Show status\n");
+				break;
+			
+			case CMD_UPLOAD:
+				printf("Upload file\n");
+				break;
+
+			case CMD_DOWNLOAD:
+				printf("Download file\n");
+				break;
+
+			default:
+				printf("Unknown command\n");
+				break;
+		}
+	}
+
+	if (had_commands) printf("Finished handling commands\n");
+}
+
 void init_network() {
     printf("Initializing network stack\n");
 
@@ -192,6 +226,9 @@ void init_network() {
 
 void update_network() {
     int active_fd = poll(sock_array, MAX_SOCK, 50);
+
+	// Handle any pending commands from the frontend
+	handle_pending();
 
     // Accept any new connections
     handle_incoming();

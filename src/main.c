@@ -109,7 +109,10 @@ void cli_show_network_status() {
 }
 
 int main(int argc, char** argv) {
-    start_client();
+    if (start_client() != 0) {
+        perror("P2P client didn't start properly");
+        exit(EXIT_FAILURE);
+    }
     
     bool running = true;
     char input[INPUT_SIZE] = {0};

@@ -2,6 +2,8 @@
 
 #include "magnet.h"
 
+extern struct CommandQueue commands;
+
 /**
  * @file client.h
  * @brief Interface between frontend (CLI, GUI) and the P2P client code
@@ -14,7 +16,7 @@
  * @brief Initializes the state of the P2P client which runs on its own thread
  * 
  */
-void start_client();
+int start_client();
 
 /**
  * @brief Entry point of the P2P client thread
