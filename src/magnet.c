@@ -1,28 +1,25 @@
 #include "magnet.h"
 
+#include <regex.h>
 #include <string.h>
 
 struct FileMagnet* create_magnet(char* filename, size_t filename_len,
                                  char* contents, size_t contents_len) {
-  pointer_not_null(filename, "Error in create_magnet the filename is null!\n");
-  pointer_not_null(contents, "Error in create_magnet the contents is null!\n");
-  if (filename_len < 1 || contents_len < 1) {
-    fprintf(stderr,
-            "Error in create_magnet, you can't create magnet from not a valid "
-            "file!\n");
-    exit(EXIT_FAILURE);
-  }
+  if (contents_len < 1 | !contents) return NULL;
 
   struct FileMagnet* new_magnet =
       (struct FileMagnet*)malloc(sizeof(struct FileMagnet));
   pointer_not_null(new_magnet,
                    "Error in create_magnet the new_magnet is unitialized!\n");
 
-  new_magnet->display_name = (char*)malloc(sizeof(char) * filename_len + 1);
-  pointer_not_null(new_magnet->display_name,
-                   "Error in create_magnet display_name alloc failed!\n");
-  memcpy(new_magnet->display_name, filename, filename_len);
-  new_magnet->display_name[filename_len] = '\0';
+  if (filename_len >= 1 && filename != NULL) {
+    new_magnet->display_name = (char*)malloc(sizeof(char) * filename_len + 1);
+    pointer_not_null(new_magnet->display_name,
+                     "Error in create_magnet display_name alloc failed!\n");
+    memcpy(new_magnet->display_name, filename, filename_len);
+    new_magnet->display_name[filename_len] = '\0';
+  } else
+    new_magnet->display_name = NULL;
   new_magnet->exact_length = contents_len;
   SHA256(contents, contents_len, new_magnet->file_hash);
   new_magnet->address_tracker = NULL;
@@ -37,8 +34,7 @@ struct FileMagnet* create_magnet(char* filename, size_t filename_len,
 }
 
 char* save_magnet_to_uri(struct FileMagnet* magnet) {
-  pointer_not_null(
-      magnet, "Error in save_magnet_to_uri, the provided magnet is null!\n");
+  if (!magnet) return NULL;
 
   const char* base = "magnet:?xt=urn:sha256:";
   size_t uri_size = strlen(base) + SHA256_DIGEST_LENGTH * 2;
@@ -78,7 +74,74 @@ char* save_magnet_to_uri(struct FileMagnet* magnet) {
 }
 
 struct FileMagnet* parse_magnet_from_uri(char* contents, size_t len) {
-  return NULL;
+  if (len < 1 | !contents) return NULL;
+
+  regex_t match;
+  regmatch_t matches[3];
+  int regex_return_value = 0;
+
+  if (regcomp(&match, "^(magnet:\\?xt=urn:sha256:)([A-Fa-f0-9]{64})",
+              REG_EXTENDED)) {
+    fprintf(stderr, "Could not compile regex\n");
+    exit(EXIT_FAILURE);
+  }
+  regex_return_value = regexec(&match, contents, 3, matches, 0);
+  if (regex_return_value == REG_NOMATCH || regex_return_value != 0) return NULL;
+
+  struct FileMagnet* new_magnet =
+      (struct FileMagnet*)malloc(sizeof(struct FileMagnet));
+  pointer_not_null(
+      new_magnet,
+      "Error in parse_magnet_from_uri : new_magnet alloc failed!\n");
+  char hash[65] = {0};
+  strncpy(hash, contents + matches[2].rm_so,
+          matches[2].rm_eo - matches[2].rm_so);
+  for (int i = 0; i < 32; i++) {
+    sscanf(hash + 2 * i, "%2hhx", &new_magnet->file_hash[i]);
+  }
+
+  if (regcomp(&match, "&dn=([^&]*)", REG_EXTENDED)) {
+    fprintf(stderr, "Could not compile regex\n");
+    exit(EXIT_FAILURE);
+  }
+
+  regex_return_value = regexec(&match, contents, 2, matches, 0);
+  if (regex_return_value == REG_NOMATCH || regex_return_value != 0)
+    new_magnet->display_name = NULL;
+  else {
+    new_magnet->display_name =
+        (char*)malloc(sizeof(char) * (matches[1].rm_eo - matches[1].rm_so) + 1);
+    pointer_not_null(
+        new_magnet->display_name,
+        "Error in parse_magnet_from_uri : display_name alloc failed!\n");
+    strncpy(new_magnet->display_name, contents + matches[1].rm_so,
+            (matches[1].rm_eo - matches[1].rm_so));
+    new_magnet->display_name[matches[1].rm_eo - matches[1].rm_so] = '\0';
+  }
+
+  if (regcomp(&match, "&xl=([^&]*)", REG_EXTENDED)) {
+    fprintf(stderr, "Could not compile regex\n");
+    exit(EXIT_FAILURE);
+  }
+
+  regex_return_value = regexec(&match, contents, 2, matches, 0);
+  if (regex_return_value == 0) {
+    char file_size[32] = "";
+    strncpy(file_size, contents + matches[1].rm_so,
+            (matches[1].rm_eo - matches[1].rm_so));
+    new_magnet->exact_length = atoi(file_size);
+  }
+
+  new_magnet->address_tracker = NULL;
+  new_magnet->web_seed = NULL;
+  new_magnet->acceptable_source = NULL;
+  new_magnet->exact_source = NULL;
+  new_magnet->keyword_topic = NULL;
+  new_magnet->manifest_topic = NULL;
+  new_magnet->select_only = NULL;
+  new_magnet->peer_addresses = NULL;
+  regfree(&match);
+  return new_magnet;
 }
 
 void free_magnet(struct FileMagnet* magnet) { free(magnet); }
