@@ -78,9 +78,9 @@ struct Peer* remove_back(struct DList* list) {
  * @param id1 First HashID
  * @param id2 Second HashID
  */
-static void dist_hash(HashID result, const HashID id1, const HashID id2) {
+static void dist_hash(HashID* result, const HashID* id1, const HashID* id2) {
   for (int i = 0; i < SHA256_DIGEST_LENGTH; i++) {
-    result[i] = id1[i] ^ id2[i];
+    *result[i] = *id1[i] ^ *id2[i];
   }
 }
 
@@ -94,10 +94,10 @@ static void dist_hash(HashID result, const HashID id1, const HashID id2) {
  * @param dist2 Second distance to compare
  * @return int Comparaison result: -1,0,1
  */
-static int compare_distance(const HashID dist1, const HashID dist2) {
+static int compare_distance(const HashID* dist1, const HashID* dist2) {
   for (int i = 0; i < SHA256_DIGEST_LENGTH; i++) {
-    if (dist1[i] < dist2[i]) return -1;
-    if (dist1[i] > dist2[i]) return 1;
+    if (*dist1[i] < *dist2[i]) return -1;
+    if (*dist1[i] > *dist2[i]) return 1;
   }
   return 0;
 }
@@ -108,12 +108,12 @@ struct Peer* find_nearest(const struct DList* list, const HashID* id) {
   struct Peer* nearest = list->head->peer;
   HashID nearest_dist = {0};
   HashID current_dist = {0};
-  dist_hash(nearest_dist, nearest->peer_id, *id);
+  dist_hash(&nearest_dist, &nearest->peer_id, id);
   struct DNode* current = list->head->next;
 
   while (current != NULL) {
-    dist_hash(current_dist, current->peer->peer_id, *id);
-    if (compare_distance(nearest_dist, current_dist) > 0) {
+    dist_hash(&current_dist, &current->peer->peer_id, id);
+    if (compare_distance(&nearest_dist, &current_dist) > 0) {
       nearest = current->peer;
       memcpy(nearest_dist, current_dist, SHA256_DIGEST_LENGTH);
     }
