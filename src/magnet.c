@@ -59,7 +59,7 @@ char* save_magnet_to_uri(struct FileMagnet* magnet) {
   if (!magnet) return NULL;
 
   const char* base = "magnet:?xt=urn:sha256:";
-  size_t uri_size = strlen(base) + SHA256_DIGEST_LENGTH * 2;
+  size_t uri_size = strlen(base) + SHA256_DIGEST_LENGTH * 2 + 1;
   char file_size[32] = "";
 
   if (magnet->exact_length > 0) {
@@ -117,8 +117,8 @@ struct FileMagnet* parse_magnet_from_uri(char* contents, size_t len) {
       new_magnet,
       "Error in parse_magnet_from_uri : new_magnet alloc failed!\n");
   char hash[65] = {0};
-  strncpy(hash, contents + matches[2].rm_so,
-          matches[2].rm_eo - matches[2].rm_so);
+  memcpy(hash, contents + matches[2].rm_so,
+         matches[2].rm_eo - matches[2].rm_so);
   for (int i = 0; i < 32; i++) {
     sscanf(hash + 2 * i, "%2hhx", &new_magnet->file_hash[i]);
   }
@@ -138,8 +138,8 @@ struct FileMagnet* parse_magnet_from_uri(char* contents, size_t len) {
     pointer_not_null(
         new_magnet->display_name,
         "Error in parse_magnet_from_uri : display_name alloc failed!\n");
-    strncpy(new_magnet->display_name, contents + matches[1].rm_so,
-            (matches[1].rm_eo - matches[1].rm_so));
+    memcpy(new_magnet->display_name, contents + matches[1].rm_so,
+           (matches[1].rm_eo - matches[1].rm_so));
     new_magnet->display_name[matches[1].rm_eo - matches[1].rm_so] = '\0';
   }
 
@@ -152,8 +152,8 @@ struct FileMagnet* parse_magnet_from_uri(char* contents, size_t len) {
   regfree(&match);
   if (regex_return_value == 0) {
     char file_size[32] = "";
-    strncpy(file_size, contents + matches[1].rm_so,
-            (matches[1].rm_eo - matches[1].rm_so));
+    memcpy(file_size, contents + matches[1].rm_so,
+           (matches[1].rm_eo - matches[1].rm_so));
     new_magnet->exact_length = atoi(file_size);
   }
 

@@ -5,7 +5,7 @@
 #include "peer.h"
 
 void add_front(struct DList* list, struct Peer* peer) {
-  if (!list || !peer) return NULL;
+  if (!list || !peer) return;
 
   struct DNode* new_node = (struct DNode*)malloc(sizeof(struct DNode));
   pointer_not_null(new_node,
@@ -26,7 +26,7 @@ void add_front(struct DList* list, struct Peer* peer) {
 }
 
 void add_back(struct DList* list, struct Peer* peer) {
-  if (!list || !peer) return NULL;
+  if (!list || !peer) return;
 
   struct DNode* new_node = (struct DNode*)malloc(sizeof(struct DNode));
   pointer_not_null(new_node,
