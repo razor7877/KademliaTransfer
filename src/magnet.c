@@ -4,6 +4,15 @@
 
 struct FileMagnet* create_magnet(char* filename, size_t filename_len,
                                  char* contents, size_t contents_len) {
+  pointer_not_null(filename, "Error in create_magnet the filename is null!\n");
+  pointer_not_null(contents, "Error in create_magnet the contents is null!\n");
+  if (filename_len < 1 || contents_len < 1) {
+    fprintf(stderr,
+            "Error in create_magnet, you can't create magnet from not a valid "
+            "file!\n");
+    exit(EXIT_FAILURE);
+  }
+
   struct FileMagnet* new_magnet =
       (struct FileMagnet*)malloc(sizeof(struct FileMagnet));
   pointer_not_null(new_magnet,
@@ -28,6 +37,9 @@ struct FileMagnet* create_magnet(char* filename, size_t filename_len,
 }
 
 char* save_magnet_to_uri(struct FileMagnet* magnet) {
+  pointer_not_null(
+      magnet, "Error in save_magnet_to_uri, the provided magnet is null!\n");
+
   const char* base = "magnet:?xt=urn:sha256:";
   char file_size[32];
   sprintf(file_size, "%zu", magnet->exact_length);
