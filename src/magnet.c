@@ -41,10 +41,17 @@ char* save_magnet_to_uri(struct FileMagnet* magnet) {
       magnet, "Error in save_magnet_to_uri, the provided magnet is null!\n");
 
   const char* base = "magnet:?xt=urn:sha256:";
-  char file_size[32];
-  sprintf(file_size, "%zu", magnet->exact_length);
-  size_t uri_size = strlen(base) + strlen(magnet->display_name) +
-                    strlen(file_size) + SHA256_DIGEST_LENGTH * 2 + 8;
+  size_t uri_size = strlen(base) + SHA256_DIGEST_LENGTH * 2;
+  char file_size[32] = "";
+
+  if (magnet->exact_length > 0) {
+    sprintf(file_size, "%zu", magnet->exact_length);
+    uri_size += strlen(file_size) + 4;
+  }
+  if (magnet->display_name != NULL) {
+    uri_size += strlen(magnet->display_name) + 4;
+  }
+
   char* uri = (char*)malloc(sizeof(char) * uri_size);
   pointer_not_null(uri, "Error in save_magnet_to_uri, uri alloc failed!\n");
   uri[0] = '\0';
@@ -56,10 +63,16 @@ char* save_magnet_to_uri(struct FileMagnet* magnet) {
 
   strncat(uri, base, uri_size - strlen(uri) - 1);
   strncat(uri, hash_hex, uri_size - strlen(uri) - 1);
-  strncat(uri, "&dn=", uri_size - strlen(uri) - 1);
-  strncat(uri, magnet->display_name, uri_size - strlen(uri) - 1);
-  strncat(uri, "&xl=", uri_size - strlen(uri) - 1);
-  strncat(uri, file_size, uri_size - strlen(uri) - 1);
+
+  if (magnet->display_name != NULL) {
+    strncat(uri, "&dn=", uri_size - strlen(uri) - 1);
+    strncat(uri, magnet->display_name, uri_size - strlen(uri) - 1);
+  }
+
+  if (magnet->exact_length > 0) {
+    strncat(uri, "&xl=", uri_size - strlen(uri) - 1);
+    strncat(uri, file_size, uri_size - strlen(uri) - 1);
+  }
 
   return uri;
 }
