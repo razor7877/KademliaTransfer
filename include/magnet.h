@@ -88,8 +88,6 @@ struct FileMagnet {
  *
  * @param filename A buffer pointing to the filename
  * @param filename_len The length of the filename
- * @param contents The contents of the file
- * @param contents_len The length of the file contents
  * @return struct FileMagnet* Returns a pointer to a new magnet
  */
 struct FileMagnet* create_magnet(const char* filename, size_t filename_len);
