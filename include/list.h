@@ -7,9 +7,10 @@
 /**
  * @file list.h
  * @brief Data structures and functions for manipulating doubly-linked lists
- * 
- * Each bucket in the Kademlia k-buckets structure consists of a doubly-linked list to allow quick insertion and removal from the head and tail
- * 
+ *
+ * Each bucket in the Kademlia k-buckets structure consists of a doubly-linked
+ * list to allow quick insertion and removal from the head and tail
+ *
  */
 
 struct Peer;
@@ -102,4 +103,5 @@ struct Peer* remove_back(struct DList* list);
  * @return Peer* A pointer to the nearest node in the list, or NULL if there are
  * none
  */
-struct Peer* find_nearest(const struct DList* list, const HashID* id);
+struct Peer** find_nearest(const struct DList* list, const HashID* id,
+                           size_t max_neighbors);

@@ -19,6 +19,9 @@ add_executable(KademliaClient
     src/command.c
     src/log.c
 )
+find_package(OpenSSL REQUIRED)
+target_link_libraries(test_magnet OpenSSL::Crypto)
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -g")
 
 target_link_libraries(KademliaClient OpenSSL::Crypto)
 

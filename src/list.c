@@ -78,7 +78,7 @@ struct Peer* remove_back(struct DList* list) {
  */
 static void dist_hash(HashID* result, const HashID* id1, const HashID* id2) {
   for (int i = 0; i < SHA256_DIGEST_LENGTH; i++) {
-    *result[i] = *id1[i] ^ *id2[i];
+    (*result)[i] = (*id1)[i] ^ (*id2)[i];
   }
 }
 
@@ -100,20 +100,32 @@ static int compare_distance(const HashID* dist1, const HashID* dist2) {
   return 0;
 }
 
-struct Peer* find_nearest(const struct DList* list, const HashID* id) {
+struct Peer** find_nearest(const struct DList* list, const HashID* id,
+                           size_t max_neighbors) {
   if (!list || !list->head) return NULL;
 
-  struct Peer* nearest = list->head->peer;
-  HashID nearest_dist = {0};
+  struct Peer** nearest =
+      (struct Peer**)malloc(sizeof(struct Peer*) * max_neighbors + 1);
+
+  HashID neighbors_dist[max_neighbors];
   HashID current_dist = {0};
-  dist_hash(&nearest_dist, &nearest->peer_id, id);
-  struct DNode* current = list->head->next;
+  size_t n = 0;
+
+  struct DNode* current = list->head;
 
   while (current != NULL) {
     dist_hash(&current_dist, &current->peer->peer_id, id);
-    if (compare_distance(&nearest_dist, &current_dist) > 0) {
-      nearest = current->peer;
-      memcpy(nearest_dist, current_dist, SHA256_DIGEST_LENGTH);
+    if (n < max_neighbors) {
+      memcpy(neighbors_dist[n], current_dist, SHA256_DIGEST_LENGTH);
+      nearest[n] = current->peer;
+      n += 1;
+    } else {
+      for (size_t i = 0; i < n; i++) {
+        if (compare_distance(&neighbors_dist[i], &current_dist) > 0) {
+          nearest[i] = current->peer;
+          memcpy(neighbors_dist[i], current_dist, SHA256_DIGEST_LENGTH);
+        }
+      }
     }
     current = current->next;
   }
