@@ -84,7 +84,7 @@ void cli_upload_file() {
     fread(contents, size, 1, file);
     fclose(file);
 
-    struct FileMagnet* magnet = create_magnet(filename, strlen(filename), contents, size);
+    struct FileMagnet* magnet = create_magnet(filename, strlen(filename));
 
     if (magnet == NULL) {
         log_msg(LOG_ERROR, "Error while trying to create magnet link!\n");
@@ -97,10 +97,57 @@ void cli_upload_file() {
 
     if (res == 0) {
         log_msg(LOG_INFO, "File successfully uploaded!\n");
+
+        const char* magnet_uri = save_magnet_to_uri(magnet);
+        size_t uri_size = strlen(magnet_uri);
+
+        log_msg(LOG_DEBUG, "magnet->display_name = %s", magnet->display_name);
+        
+        // Allocate new filename with ".torrent" appended
+        const char* suffix = ".torrent";
+        size_t name_len = strlen(magnet->display_name);
+        size_t suffix_len = strlen(suffix);
+        // +1 for null terminator
+        char* filename = malloc(name_len + suffix_len + 1);
+
+        if (!filename) {
+            log_msg(LOG_ERROR, "Failed to allocate memory for filename");
+            free((void*)magnet_uri);
+            return;
+        }
+
+        // Build the magnet filename
+        strcpy(filename, magnet->display_name);
+        strcat(filename, suffix);
+
+        log_msg(LOG_DEBUG, "filename = %s", filename);
+
+        FILE* magnet_file = fopen(filename, "w");
+        if (!magnet_file) {
+            log_msg(LOG_ERROR, "Error while trying to save magnet file!");
+            free(magnet_uri);
+            free(filename);
+            return;
+        }
+
+        size_t written = fwrite(magnet_uri, uri_size, 1, magnet_file);
+        if (written != uri_size) {
+            log_msg(LOG_ERROR, "Unable to write entire URI to file!");
+            fclose(magnet_file);
+            free(magnet_uri);
+            free(filename);
+            return;
+        }
+
+        fclose(magnet_file);
+        free(magnet_uri);
+        free(filename);
     }
     else {
         log_msg(LOG_ERROR, "Error while trying to upload the file! Error code: %d\n", res);
     }
+
+    free_magnet(magnet);
 }
 
 void cli_show_network_status() {

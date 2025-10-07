@@ -96,7 +96,7 @@ int download_file(struct FileMagnet* file) {
 
     queue_push(&commands, &c);
 
-    return -1;
+    return 0;
 }
 
 int upload_file(struct FileMagnet* file) {
@@ -107,7 +107,7 @@ int upload_file(struct FileMagnet* file) {
 
     queue_push(&commands, &c);
 
-    return -1;
+    return 0;
 }
 
 void show_network_status() {

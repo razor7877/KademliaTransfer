@@ -5,6 +5,8 @@ include_directories(
     include
 )
 
+find_package(OpenSSL REQUIRED)
+
 add_executable(KademliaClient
     src/main.c
     src/shared.c
@@ -17,6 +19,8 @@ add_executable(KademliaClient
     src/command.c
     src/log.c
 )
+
+target_link_libraries(KademliaClient OpenSSL::Crypto)
 
 # Doxygen configuration
 
