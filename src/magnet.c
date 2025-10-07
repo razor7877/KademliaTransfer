@@ -9,10 +9,11 @@ struct FileMagnet* create_magnet(char* filename, size_t filename_len,
   pointer_not_null(new_magnet,
                    "Error in create_magnet the new_magnet is unitialized!\n");
 
-  new_magnet->display_name = (char*)malloc(sizeof(char) * filename_len);
+  new_magnet->display_name = (char*)malloc(sizeof(char) * filename_len + 1);
   pointer_not_null(new_magnet->display_name,
                    "Error in create_magnet display_name alloc failed!\n");
   memcpy(new_magnet->display_name, filename, filename_len);
+  new_magnet->display_name[filename_len] = '\0';
   new_magnet->exact_length = contents_len;
   SHA256(contents, contents_len, new_magnet->file_hash);
   new_magnet->address_tracker = NULL;
@@ -26,7 +27,30 @@ struct FileMagnet* create_magnet(char* filename, size_t filename_len,
   return new_magnet;
 }
 
-char* save_magnet_to_uri(struct FileMagnet* magnet) { return NULL; }
+char* save_magnet_to_uri(struct FileMagnet* magnet) {
+  const char* base = "magnet:?xt=urn:sha256:";
+  char file_size[32];
+  sprintf(file_size, "%zu", magnet->exact_length);
+  size_t uri_size = strlen(base) + strlen(magnet->display_name) +
+                    strlen(file_size) + SHA256_DIGEST_LENGTH * 2 + 8;
+  char* uri = (char*)malloc(sizeof(char) * uri_size);
+  pointer_not_null(uri, "Error in save_magnet_to_uri, uri alloc failed!\n");
+  uri[0] = '\0';
+
+  char hash_hex[65];
+  for (int i = 0; i < 32; i++)
+    sprintf(hash_hex + i * 2, "%02x", magnet->file_hash[i]);
+  hash_hex[64] = '\0';
+
+  strncat(uri, base, uri_size - strlen(uri) - 1);
+  strncat(uri, hash_hex, uri_size - strlen(uri) - 1);
+  strncat(uri, "&dn=", uri_size - strlen(uri) - 1);
+  strncat(uri, magnet->display_name, uri_size - strlen(uri) - 1);
+  strncat(uri, "&xl=", uri_size - strlen(uri) - 1);
+  strncat(uri, file_size, uri_size - strlen(uri) - 1);
+
+  return uri;
+}
 
 struct FileMagnet* parse_magnet_from_uri(char* contents, size_t len) {
   return NULL;
