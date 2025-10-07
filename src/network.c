@@ -21,7 +21,7 @@
 #define MAX_SOCK 128
 #define SERVER_PORT 8182
 
-static const char http_pattern[] = "\r\r";
+static const char http_pattern[] = "\r\n\r\n";
 
 static struct pollfd sock_array[MAX_SOCK] = {0};
 static char buf[BUF_SIZE] = {0};

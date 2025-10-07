@@ -104,8 +104,6 @@ void cli_upload_file() {
 }
 
 void cli_show_network_status() {
-    printf("Showing network status...\n");
-
     show_network_status();
 }
 
@@ -131,7 +129,7 @@ int main(int argc, char** argv) {
         printf("Enter your choice: ");
 
         if (fgets(input, sizeof(input), stdin) == NULL) {
-            printf("\nError reading input\n");
+            log_msg(LOG_WARN, "\nError reading input\n");
             continue;
         }
 
@@ -140,7 +138,7 @@ int main(int argc, char** argv) {
         input[strcspn(input, "\n")] = '\00';
 
         if (sscanf(input, "%d", &choice) != 1) {
-            printf("Invalid input! Please enter a number.\n");
+            log_msg(LOG_WARN, "Invalid input! Please enter a number.\n");
             continue;
         }
 
@@ -158,12 +156,12 @@ int main(int argc, char** argv) {
                 break;
 
             case 4:
-                printf("Exiting program...\n");
+                log_msg(LOG_INFO, "Exiting program...\n");
                 running = false;
                 break;
 
             default:
-                printf("Invalid choice! Please select 1-4.\n");
+                log_msg(LOG_WARN, "Invalid choice! Please select 1-4.\n");
                 break;
         }
     }

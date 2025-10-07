@@ -48,7 +48,7 @@ bool queue_pop(struct CommandQueue* q, struct Command* out_cmd) {
 }
 
 void queue_destroy(struct CommandQueue* q) {
-    if (!q) return false;
+    if (!q) return;
 
     pthread_mutex_destroy(&q->lock);
     q->head = 0;

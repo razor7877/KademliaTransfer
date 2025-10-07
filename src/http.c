@@ -3,6 +3,7 @@
 
 #include "http.h"
 #include "shared.h"
+#include "log.h"
 
 static const char* not_found =
     "HTTP/1.1 404 Not Found\r\n"
@@ -59,7 +60,7 @@ static void send_http_file(struct pollfd* sock, const char* filename) {
 }
 
 void handle_http_request(struct pollfd* sock, char* contents, size_t length) {
-    printf("Handling HTTP request\n");
+    log_msg(LOG_INFO, "Handling HTTP request\n");
 
     if (memcmp(contents, "GET ", 4) != 0) {
         send_all(sock->fd, method_not_allowed, strlen(method_not_allowed));
@@ -76,7 +77,7 @@ void handle_http_request(struct pollfd* sock, char* contents, size_t length) {
         return;
     }
     
-    printf("Request file path: %s\n", file_path);
+    log_msg(LOG_INFO, "Request file path: %s\n", file_path);
 
     send_http_file(sock, file_path);
 }
