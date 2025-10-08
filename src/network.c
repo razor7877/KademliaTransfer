@@ -97,7 +97,19 @@ static void get_http_request(struct pollfd* sock, char* buf) {
 }
 
 static void broadcast_discovery_request(void) {
-  log_msg(LOG_INFO, "Running new node discovery");
+  struct sockaddr_in server_addr = {0};
+  socklen_t size = sizeof(server_addr);
+  server_addr.sin_family = AF_INET;
+  server_addr.sin_port = htons(BROADCAST_PORT);
+  server_addr.sin_addr.s_addr = htonl(INADDR_BROADCAST);
+
+  ssize_t sent = sendto(sock_array[1].fd, RPC_MAGIC, sizeof(RPC_MAGIC), 0,
+                        (struct sockaddr*)&server_addr, sizeof(server_addr));
+  if (sent < 0) {
+    perror("sendto");
+  } else {
+    log_msg(LOG_INFO, "Running new node discovery");
+  }
 }
 
 /**
