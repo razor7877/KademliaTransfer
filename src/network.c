@@ -16,6 +16,7 @@
 #include "http.h"
 #include "log.h"
 #include "rpc.h"
+#include "schedule.h"
 #include "shared.h"
 
 #define MAX_WAIT_CON 5
@@ -29,6 +30,10 @@ static struct pollfd sock_array[MAX_SOCK] = {0};
 static char buf[BUF_SIZE] = {0};
 static int listen_fd = 0;
 static int broad_fd = 0;
+static void broadcast_discovery_request(void);
+static struct Schedule tasks[] = {
+    {"broadcast_discovery", 0, 30, broadcast_discovery_request},
+    {NULL, 0, 0, NULL}};
 
 /**
  * @brief Gets the contents of the entire RPC request according to the request
@@ -89,6 +94,10 @@ static void get_http_request(struct pollfd* sock, char* buf) {
   }
 
   handle_http_request(sock, buf, received);
+}
+
+static void broadcast_discovery_request(void) {
+  log_msg(LOG_INFO, "Running new node discovery");
 }
 
 /**
@@ -231,6 +240,16 @@ static void handle_pending() {
   if (had_commands) log_msg(LOG_DEBUG, "Finished handling commands");
 }
 
+static void handle_tasks() {
+  time_t now = time(NULL);
+  for (int i = 0; tasks[i].func != NULL; i++) {
+    if (now >= tasks[i].next_run) {
+      tasks[i].func();
+      tasks[i].next_run = now + tasks[i].interval_secs;
+    }
+  }
+}
+
 void init_network() {
   log_msg(LOG_DEBUG, "Initializing network stack");
 
@@ -298,6 +317,8 @@ void update_network() {
 
   // Handle requests from connected peers
   handle_connected();
+  // Check periodic task
+  handle_tasks();
 }
 
 void stop_network() { log_msg(LOG_INFO, "Stopping network stack"); }
