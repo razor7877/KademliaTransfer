@@ -2,6 +2,7 @@
 
 #include "shared.h"
 #include "peer.h"
+#include "rpc.h"
 
 /**
  * @file storage.h
@@ -36,3 +37,6 @@ const struct KeyValuePair* storage_get_value(HashID* key);
  * @param value The key-value pair to be stored into the client storage
  */
 void storage_put_value(struct KeyValuePair* value);
+
+struct RPCKeyValue* serialize_rpc_value(const struct KeyValuePair* value);
+struct KeyValuePair* deserialize_rpc_value(const struct RPCKeyValue* value);

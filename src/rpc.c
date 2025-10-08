@@ -4,6 +4,7 @@
 
 #include "rpc.h"
 #include "log.h"
+#include "storage.h"
 
 /**
  * @brief Kademlia neighbor buckets
@@ -28,6 +29,21 @@ static void handle_ping(struct pollfd* sock, struct RPCPing* data) {
 
 static void handle_store(struct pollfd* sock, struct RPCStore* data) {
     log_msg(LOG_DEBUG, "Handling RPC store\n");
+
+    struct KeyValuePair* kvp = deserialize_rpc_value(&data->key_value);
+    storage_put_value(kvp);
+    free(kvp);
+
+    struct RPCResponse response = {
+        .header = {
+            .magic_number = RPC_MAGIC,
+            .call_type = STORE_RESPONSE,
+            .packet_size = sizeof(struct RPCResponse)
+        },
+        .success = true
+    };
+
+    send_all(sock->fd, &response, sizeof(response));
 }
 
 static void handle_find_node(struct pollfd* sock, struct RPCFind* data) {

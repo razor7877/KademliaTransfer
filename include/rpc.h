@@ -4,6 +4,7 @@
 #include <openssl/sha.h>
 #include <stdbool.h>
 #include <arpa/inet.h>
+#include <poll.h>
 
 #include "bucket.h"
 #include "shared.h"

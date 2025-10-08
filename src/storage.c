@@ -60,7 +60,7 @@ static uint64_t storage_hash(const void* item, uint64_t seed0, uint64_t seed1) {
  */
 static void storage_init() {
     log_msg(LOG_DEBUG, "Initializing client storage");
-    
+
     storage_map = hashmap_new(sizeof(struct KeyValuePair), 0, 0, 0,
                               storage_hash, storage_compare, NULL, NULL);
     
@@ -89,4 +89,42 @@ void storage_put_value(struct KeyValuePair* value) {
     }
 
     hashmap_set(storage_map, value);
+}
+
+struct RPCKeyValue* serialize_rpc_value(const struct KeyValuePair* value) {
+    struct RPCKeyValue* serialized = malloc(sizeof(struct RPCKeyValue));
+
+    pointer_not_null(serialized, "malloc error in deserialize_rpc_value");
+
+    memcpy(serialized->key, value->key, sizeof(value->key));
+    serialized->num_values = value->num_values;
+
+    for (int i = 0; i < value->num_values; i++) {
+        struct RPCPeer* p = serialize_rpc_peer(&value->values[i]);
+        // Copy it to the struct
+        serialized->values[i] = *p;
+
+        free(p);
+    }
+
+    return serialized;
+}
+
+struct KeyValuePair* deserialize_rpc_value(const struct RPCKeyValue* value) {
+    struct KeyValuePair* deserialized = malloc(sizeof(struct KeyValuePair));
+
+    pointer_not_null(deserialized, "malloc error in deserialize_rpc_value");
+
+    memcpy(deserialized->key, value->key, sizeof(value->key));
+    deserialized->num_values = value->num_values;
+
+    for (int i = 0; i < value->num_values; i++) {
+        struct Peer* p = deserialize_rpc_peer(&value->values[i]);
+        // Copy it to the struct
+        deserialized->values[i] = *p;
+
+        free(p);
+    }
+
+    return deserialized;
 }
