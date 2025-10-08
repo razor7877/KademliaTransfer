@@ -177,10 +177,24 @@ static void handle_pending() {
 				break;
 			
 			case CMD_UPLOAD:
+				if (cmd.file == NULL) {
+					log_msg(LOG_WARN, "Got upload command with empty file");
+					continue;
+				}
+
+				handle_rpc_upload(cmd.file);
+
 				log_msg(LOG_DEBUG, "Upload file");
 				break;
 
 			case CMD_DOWNLOAD:
+				if (cmd.file == NULL) {
+					log_msg(LOG_WARN, "Got download command with empty file");
+					continue;
+				}
+
+				handle_rpc_download(cmd.file);
+
 				log_msg(LOG_DEBUG, "Download file");
 				break;
 

@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <stdio.h>
+#include <errno.h>
 
 #include "client.h"
 #include "log.h"
@@ -98,7 +99,7 @@ void cli_upload_file() {
     if (res == 0) {
         log_msg(LOG_INFO, "File successfully uploaded!\n");
 
-        const char* magnet_uri = save_magnet_to_uri(magnet);
+        char* magnet_uri = save_magnet_to_uri(magnet);
         size_t uri_size = strlen(magnet_uri);
 
         log_msg(LOG_DEBUG, "magnet->display_name = %s", magnet->display_name);
@@ -122,7 +123,7 @@ void cli_upload_file() {
 
         log_msg(LOG_DEBUG, "filename = %s", filename);
 
-        FILE* magnet_file = fopen(filename, "w");
+        FILE* magnet_file = fopen(filename, "w+");
         if (!magnet_file) {
             log_msg(LOG_ERROR, "Error while trying to save magnet file!");
             free(magnet_uri);
@@ -131,8 +132,8 @@ void cli_upload_file() {
         }
 
         size_t written = fwrite(magnet_uri, uri_size, 1, magnet_file);
-        if (written != uri_size) {
-            log_msg(LOG_ERROR, "Unable to write entire URI to file!");
+        if (written < 1) {
+            log_msg(LOG_ERROR, "Unable to write entire URI to file! Error: %s", strerror(errno));
             fclose(magnet_file);
             free(magnet_uri);
             free(filename);
@@ -163,11 +164,8 @@ int main(int argc, char** argv) {
     bool running = true;
     char input[INPUT_SIZE] = {0};
     int choice = -1;
-    // pid_t tid = gettid();
 
     while (running) {
-        //printf("Updating CLI - TID: %d\n", tid);
-
         printf("\n===== KademliaTransfer Menu =====\n");
         printf("1. Show network status\n");
         printf("2. Upload file\n");

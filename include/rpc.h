@@ -7,6 +7,7 @@
 
 #include "bucket.h"
 #include "shared.h"
+#include "magnet.h"
 
 /**
  * @file rpc.h
@@ -101,3 +102,17 @@ struct RPCFindNodeResponse {
  * @param length The length of the RPC request
  */
 void handle_rpc_request(struct pollfd* sock, char* contents, size_t length);
+
+/**
+ * @brief Handles uploading a file to the P2P network
+ * 
+ * @param file The metadata about the file to upload
+ */
+void handle_rpc_upload(struct FileMagnet* file);
+
+/**
+ * @brief Handles downloading a file from the P2P network
+ * 
+ * @param file The metadata about the file to upload
+ */
+void handle_rpc_download(struct FileMagnet* file);

@@ -3,6 +3,12 @@
 #include "rpc.h"
 #include "log.h"
 
+/**
+ * @brief Kademlia neighbor buckets
+ * 
+ */
+static Buckets buckets = {0};
+
 static void handle_ping(struct pollfd* sock, struct RPCPing* data) {
     log_msg(LOG_DEBUG, "Handling RPC ping\n");
 
@@ -61,4 +67,14 @@ void handle_rpc_request(struct pollfd* sock, char* contents, size_t length) {
 		case FIND_NODE: handle_find_node(sock, (struct RPCFind*)contents); break;
 		case FIND_VALUE: handle_find_value(sock, (struct RPCFind*)contents);; break;
 	}
+}
+
+void handle_rpc_upload(struct FileMagnet* file) {
+    log_msg(LOG_DEBUG, "Start handling RPC upload");
+
+
+}
+
+void handle_rpc_download(struct FileMagnet* file) {
+    log_msg(LOG_DEBUG, "Start handling RPC download");
 }
