@@ -50,8 +50,6 @@ static void handle_store(struct pollfd* sock, struct RPCStore* data) {
 static void handle_find_node(struct pollfd* sock, struct RPCFind* data) {
     log_msg(LOG_DEBUG, "Handling RPC find node");
 
-    struct Peer* closest = find_closest_peers(&buckets, &data->key, 1);
-
     struct RPCFindNodeResponse response = {
         .header = {
             .magic_number = RPC_MAGIC,
@@ -63,6 +61,8 @@ static void handle_find_node(struct pollfd* sock, struct RPCFind* data) {
         .num_closest = 0,
         .closest = {0}
     };
+    
+    struct Peer* closest = find_closest_peers(&buckets, &data->key, 1);
 
     if (closest == NULL) {
         log_msg(LOG_ERROR, "handle_find_node find_closest_peers returned NULL");

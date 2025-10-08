@@ -4,6 +4,7 @@
 #include <openssl/sha.h>
 #include <openssl/evp.h>
 #include <unistd.h>
+#include <netinet/in.h>
 
 #define BUF_SIZE 16384
 #define FILE_BLOCK_SIZE 4096
@@ -81,3 +82,5 @@ ssize_t send_all(int fd, const void* src, size_t len);
 int min(const int a, const int b);
 
 void pointer_not_null(void* ptr, const char* message);
+
+int get_own_id(HashID* out);
