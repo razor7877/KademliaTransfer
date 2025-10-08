@@ -3,6 +3,7 @@ project(KademliaTransfer)
 
 include_directories(
     include
+    lib
 )
 
 find_package(OpenSSL REQUIRED)
@@ -18,6 +19,9 @@ add_executable(KademliaClient
     src/list.c
     src/command.c
     src/log.c
+    src/storage.c
+
+    lib/hash/hashmap.c
 )
 
 target_link_libraries(KademliaClient OpenSSL::Crypto)

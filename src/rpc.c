@@ -1,5 +1,7 @@
 #include <poll.h>
 
+#include <hash/hashmap.h>
+
 #include "rpc.h"
 #include "log.h"
 
@@ -71,8 +73,6 @@ void handle_rpc_request(struct pollfd* sock, char* contents, size_t length) {
 
 void handle_rpc_upload(struct FileMagnet* file) {
     log_msg(LOG_DEBUG, "Start handling RPC upload");
-
-
 }
 
 void handle_rpc_download(struct FileMagnet* file) {
