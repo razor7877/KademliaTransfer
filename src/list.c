@@ -70,13 +70,7 @@ struct Peer* remove_back(struct DList* list) {
   return tail_peer;
 }
 
-/**
- * @brief Calculate the XOR distance between two HashID
- * @param result Buffer where the result is stored
- * @param id1 First HashID
- * @param id2 Second HashID
- */
-static void dist_hash(HashID* result, const HashID* id1, const HashID* id2) {
+void dist_hash(HashID* result, const HashID* id1, const HashID* id2) {
   for (int i = 0; i < SHA256_DIGEST_LENGTH; i++) {
     (*result)[i] = (*id1)[i] ^ (*id2)[i];
   }

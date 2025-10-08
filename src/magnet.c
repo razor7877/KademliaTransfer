@@ -1,55 +1,8 @@
 #include "magnet.h"
+#include "shared.h"
 
 #include <regex.h>
 #include <string.h>
-
-static int sha256_file(const char* filename, HashID* id) {
-  FILE* file = fopen(filename, "rb");
-  if (!file) return -1;
-  int bytes_read = 0;
-  int file_size = 0;
-  unsigned char block[SHA256_BLOCK_SIZE];
-
-  EVP_MD_CTX* ctx = EVP_MD_CTX_new();
-  if (!ctx) {
-    fclose(file);
-    return -1;
-  }
-
-  const EVP_MD* md = EVP_sha256();
-
-  if (EVP_DigestInit_ex(ctx, md, NULL) != 1) {
-    EVP_MD_CTX_free(ctx);
-    fclose(file);
-    return -1;
-  }
-
-  while ((bytes_read = fread(block, 1, sizeof(block), file)) > 0) {
-    if (EVP_DigestUpdate(ctx, block, bytes_read) != 1) {
-      EVP_MD_CTX_free(ctx);
-      fclose(file);
-      return -1;
-    }
-    file_size += bytes_read;
-  }
-  if (ferror(file)) {
-    EVP_MD_CTX_free(ctx);
-    fclose(file);
-    return -1;
-  }
-
-  unsigned int hash_size = SHA256_DIGEST_LENGTH;
-
-  if (EVP_DigestFinal_ex(ctx, (unsigned char*)id, &hash_size) != 1) {
-    EVP_MD_CTX_free(ctx);
-    fclose(file);
-    return -1;
-  }
-
-  EVP_MD_CTX_free(ctx);
-  fclose(file);
-  return file_size;
-}
 
 struct FileMagnet* create_magnet(const char* filename, size_t filename_len) {
   if (!filename || filename_len < 1) return NULL;

@@ -96,6 +96,14 @@ struct Peer* remove_front(struct DList* list);
 struct Peer* remove_back(struct DList* list);
 
 /**
+ * @brief Calculate the XOR distance between two HashID
+ * @param result Buffer where the result is stored
+ * @param id1 First HashID
+ * @param id2 Second HashID
+ */
+void dist_hash(HashID* result, const HashID* id1, const HashID* id2);
+
+/**
  * @brief Finds the nearest node to a hash in the linked list
  *
  * @param list The list in which to search

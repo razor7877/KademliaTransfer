@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <openssl/sha.h>
 
 #include "log.h"
 #include "shared.h"
@@ -139,6 +140,78 @@ void pointer_not_null(void * ptr, const char * message) {
 	}
 }
 
+int sha256_file(const char* filename, HashID* id) {
+  FILE* file = fopen(filename, "rb");
+  if (!file) return -1;
+  int bytes_read = 0;
+  int file_size = 0;
+  unsigned char block[SHA256_BLOCK_SIZE];
+
+  EVP_MD_CTX* ctx = EVP_MD_CTX_new();
+  if (!ctx) {
+    fclose(file);
+    return -1;
+  }
+
+  const EVP_MD* md = EVP_sha256();
+
+  if (EVP_DigestInit_ex(ctx, md, NULL) != 1) {
+    EVP_MD_CTX_free(ctx);
+    fclose(file);
+    return -1;
+  }
+
+  while ((bytes_read = fread(block, 1, sizeof(block), file)) > 0) {
+    if (EVP_DigestUpdate(ctx, block, bytes_read) != 1) {
+      EVP_MD_CTX_free(ctx);
+      fclose(file);
+      return -1;
+    }
+    file_size += bytes_read;
+  }
+  if (ferror(file)) {
+    EVP_MD_CTX_free(ctx);
+    fclose(file);
+    return -1;
+  }
+
+  unsigned int hash_size = SHA256_DIGEST_LENGTH;
+
+  if (EVP_DigestFinal_ex(ctx, (unsigned char*)id, &hash_size) != 1) {
+    EVP_MD_CTX_free(ctx);
+    fclose(file);
+    return -1;
+  }
+
+  EVP_MD_CTX_free(ctx);
+  fclose(file);
+  return file_size;
+}
+
+int sha256_buf(const unsigned char* in_buf, size_t buf_size, unsigned char* out_buf) {
+    EVP_MD_CTX* ctx = EVP_MD_CTX_new();
+    if (!ctx) return -1;
+
+    if (EVP_DigestInit_ex(ctx, EVP_sha256(), NULL) != 1) {
+        EVP_MD_CTX_free(ctx);
+        return -1;
+    }
+
+    if (EVP_DigestUpdate(ctx, in_buf, buf_size) != 1) {
+        EVP_MD_CTX_free(ctx);
+        return -1;
+    }
+
+    unsigned int out_len = 0;
+
+    if (EVP_DigestFinal_ex(ctx, out_buf, &out_len) != 1) {
+        EVP_MD_CTX_free(ctx);
+        return -1;
+    }
+
+	return 0;
+}
+
 static int get_primary_ip(char* ip_buf, size_t buf_size) {
     int sock = socket(AF_INET, SOCK_DGRAM, 0);
     if (sock < 0) {
@@ -176,28 +249,6 @@ static int get_primary_ip(char* ip_buf, size_t buf_size) {
     return (result != NULL) ? 0 : -1;
 }
 
-static void sha256_buf(const unsigned char* in_buf, size_t buf_size, unsigned char* out_buf) {
-    EVP_MD_CTX* ctx = EVP_MD_CTX_new();
-    if (!ctx) return; // handle allocation failure
-
-    if (EVP_DigestInit_ex(ctx, EVP_sha256(), NULL) != 1) {
-        EVP_MD_CTX_free(ctx);
-        return;
-    }
-
-    if (EVP_DigestUpdate(ctx, in_buf, buf_size) != 1) {
-        EVP_MD_CTX_free(ctx);
-        return;
-    }
-
-    unsigned int out_len = 0;
-
-    if (EVP_DigestFinal_ex(ctx, out_buf, &out_len) != 1) {
-        EVP_MD_CTX_free(ctx);
-        return;
-    }
-}
-
 int get_own_id(HashID* out) {
     char ip[INET_ADDRSTRLEN] = {0};
     if (get_primary_ip(ip, sizeof(ip)) != 0) {
@@ -210,11 +261,18 @@ int get_own_id(HashID* out) {
     unsigned char ip_hash[32] = {0};
 
     sha256_buf(ip, strlen(ip), ip_hash);
-    log_msg(LOG_DEBUG, "IP length is: %d\n", strlen(ip));
+    log_msg(LOG_DEBUG, "IP length is: %d", strlen(ip));
 
-    log_msg(LOG_DEBUG, "Hash:\n");
-    for (int i = 0; i < 32; i++) printf("%02x", ip_hash[i]);
-    printf("\n");
+	char hash_str[sizeof(HashID) * 2 + 1] = {0};
+	sha256_to_hex((HashID*)ip_hash, hash_str);
+    log_msg(LOG_DEBUG, "Hash: %s", hash_str);
 
 	return 0;
+}
+
+void sha256_to_hex(const HashID* hash, char* str_buf) {
+    for (int i = 0; i < sizeof(HashID); i++) {
+        sprintf(str_buf + (i * 2), "%02x", *hash[i]);
+    }
+    str_buf[sizeof(HashID) * 2] = '\0'; // null-terminate
 }

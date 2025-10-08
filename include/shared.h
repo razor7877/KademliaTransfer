@@ -8,6 +8,7 @@
 
 #define BUF_SIZE 16384
 #define FILE_BLOCK_SIZE 4096
+#define SHA256_BLOCK_SIZE 4096
 
 #define K_VALUE 2
 
@@ -83,4 +84,15 @@ int min(const int a, const int b);
 
 void pointer_not_null(void* ptr, const char* message);
 
+int sha256_file(const char* filename, HashID* id);
+int sha256_buf(const unsigned char* in_buf, size_t buf_size, unsigned char* out_buf);
+
 int get_own_id(HashID* out);
+
+/**
+ * @brief Converts a SHA-256 hash to a hex string.
+ * 
+ * @param hash Pointer to 32-byte hash
+ * @param str_buf Buffer to hold hex string, must be at least 65 bytes
+ */
+void sha256_to_hex(const HashID* hash, char* str_buf);
