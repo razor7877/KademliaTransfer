@@ -6,6 +6,7 @@
 #include <openssl/evp.h>
 
 #include "shared.h"
+#include "rpc.h"
 
 /**
  * @brief Represents a single peer in the network
@@ -36,3 +37,19 @@ struct Peer {
      */
     EVP_PKEY* peer_pub_key;
 };
+
+/**
+ * @brief Serializes a struct Peer to a struct RPCPeer
+ * 
+ * @param peer The peer to serialize
+ * @return struct RPCPeer* Returns a heap-allocated struct RPCPeer* that should be freed by the caller
+ */
+struct RPCPeer* serialize_rpc_peer(const struct Peer* peer);
+
+/**
+ * @brief Deserializes a struct RPCPeer to a struct Peer
+ * 
+ * @param peer The peer to deserialize
+ * @return struct Peer* Returns a heap-allocated struct Peer* that should be freed by the caller
+ */
+struct Peer* deserialize_rpc_peer(const struct RPCPeer* peer);
