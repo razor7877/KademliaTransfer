@@ -4,7 +4,9 @@
 
 #include "bucket.h"
 #include "shared.h"
+
 #define SHA256_BLOCK_SIZE 4096
+
 /**
  * @file magnet.h
  * @brief Magnet URI implementation

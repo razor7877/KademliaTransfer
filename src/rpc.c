@@ -5,6 +5,7 @@
 #include "rpc.h"
 #include "log.h"
 #include "storage.h"
+#include "bucket.h"
 
 /**
  * @brief Kademlia neighbor buckets
@@ -13,7 +14,7 @@
 static Buckets buckets = {0};
 
 static void handle_ping(struct pollfd* sock, struct RPCPing* data) {
-    log_msg(LOG_DEBUG, "Handling RPC ping\n");
+    log_msg(LOG_DEBUG, "Handling RPC ping");
 
     struct RPCResponse response = {
         .header = {
@@ -28,7 +29,7 @@ static void handle_ping(struct pollfd* sock, struct RPCPing* data) {
 }
 
 static void handle_store(struct pollfd* sock, struct RPCStore* data) {
-    log_msg(LOG_DEBUG, "Handling RPC store\n");
+    log_msg(LOG_DEBUG, "Handling RPC store");
 
     struct KeyValuePair* kvp = deserialize_rpc_value(&data->key_value);
     storage_put_value(kvp);
@@ -47,15 +48,40 @@ static void handle_store(struct pollfd* sock, struct RPCStore* data) {
 }
 
 static void handle_find_node(struct pollfd* sock, struct RPCFind* data) {
-    log_msg(LOG_DEBUG, "Handling RPC find node\n");
+    log_msg(LOG_DEBUG, "Handling RPC find node");
+
+    struct Peer* closest = find_closest_peers(&buckets, &data->key, 1);
+
+    struct RPCFindNodeResponse response = {
+        .header = {
+            .magic_number = RPC_MAGIC,
+            .call_type = FIND_NODE_RESPONSE,
+            .packet_size = sizeof(struct RPCFindNodeResponse)
+        },
+        .success = false,
+        .found_key = false,
+        .num_closest = 0,
+        .closest = {0}
+    };
+
+    if (closest == NULL) {
+        log_msg(LOG_ERROR, "handle_find_node find_closest_peers returned NULL");
+        // Send error response
+        send_all(sock->fd, &response, sizeof(response));
+        return;
+    }
+
+    send_all(sock->fd, &response, sizeof(response));
+
+    free(closest);
 }
 
 static void handle_find_value(struct pollfd* sock, struct RPCFind* data) {
-    log_msg(LOG_DEBUG, "Handling RPC find value\n");
+    log_msg(LOG_DEBUG, "Handling RPC find value");
 }
 
 void handle_rpc_request(struct pollfd* sock, char* contents, size_t length) {
-    log_msg(LOG_DEBUG, "Handling RPC request in RPC layer\n");
+    log_msg(LOG_DEBUG, "Handling RPC request in RPC layer");
 
     size_t expected_size = 0;
 
@@ -68,14 +94,14 @@ void handle_rpc_request(struct pollfd* sock, char* contents, size_t length) {
 		case FIND_VALUE: expected_size = sizeof(struct RPCFind); break;
 
 		default:
-			log_msg(LOG_ERROR, "Got invalid RPC request!\n");
+			log_msg(LOG_ERROR, "Got invalid RPC request!");
             return;
 	}
 
-	log_msg(LOG_DEBUG, "Claimed size is: %d - Expected size is: %ld\n", header->packet_size, expected_size);
+	log_msg(LOG_DEBUG, "Claimed size is: %d - Expected size is: %ld", header->packet_size, expected_size);
 
 	if (header->packet_size != expected_size) {
-		log_msg(LOG_ERROR, "Claimed size doesn't match expected, discarding packet!\n");
+		log_msg(LOG_ERROR, "Claimed size doesn't match expected, discarding packet!");
 		return;
 	}
 

@@ -8,7 +8,8 @@
 
 #include "bucket.h"
 #include "shared.h"
-#include "magnet.h"
+
+struct FileMagnet;
 
 /**
  * @file rpc.h
@@ -83,12 +84,14 @@ struct RPCResponse {
 
 struct RPCFindValueResponse {
   struct RPCMessageHeader header;
+  uint8_t success;
   uint8_t found_key;
   struct RPCKeyValue values;
 };
 
 struct RPCFindNodeResponse {
   struct RPCMessageHeader header;
+  uint8_t success;
   uint8_t found_key;
   size_t num_closest;
   struct RPCPeer closest[K_VALUE];

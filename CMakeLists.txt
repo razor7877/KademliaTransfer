@@ -21,6 +21,7 @@ add_executable(KademliaClient
     src/log.c
     src/storage.c
     src/peer.c
+    src/bucket.c
 
     lib/hash/hashmap.c
 )

@@ -9,6 +9,13 @@
 #include "rpc.h"
 
 /**
+ * @file peer.h
+ * @brief Data structures and functions for manipulating peers
+ * 
+ * 
+ */
+
+/**
  * @brief Represents a single peer in the network
  * 
  */
