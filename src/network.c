@@ -96,6 +96,10 @@ static void get_http_request(struct pollfd* sock, char* buf) {
   handle_http_request(sock, buf, received);
 }
 
+/**
+ * @brief Called in the network update loop. Sent broadcast discovery request
+ *
+ */
 static void broadcast_discovery_request(void) {
   struct sockaddr_in server_addr = {0};
   socklen_t size = sizeof(server_addr);
@@ -252,6 +256,11 @@ static void handle_pending() {
   if (had_commands) log_msg(LOG_DEBUG, "Finished handling commands");
 }
 
+/**
+ * @brief Called in the network update loop. Handles scheduled tasks
+ * peers
+ *
+ */
 static void handle_tasks() {
   time_t now = time(NULL);
   for (int i = 0; tasks[i].func != NULL; i++) {
