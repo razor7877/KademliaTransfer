@@ -133,7 +133,6 @@ struct Peer* find_peer_by_id(const struct DList* list, const HashID id) {
 
   struct DNode* current = list->head;
   while (current != NULL) {
-    log_msg(LOG_WARN, "memcmp stuff");
     if (memcmp(&current->peer->peer_id, id, sizeof(HashID)) == 0)
         return current->peer;
         

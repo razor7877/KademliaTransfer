@@ -314,25 +314,22 @@ int get_own_id(HashID out) {
 }
 
 int create_own_peer(struct Peer* out_peer) {
-    if (!out_peer) return -1;
+    if (!out_peer)
+        return -1;
 
     memset(out_peer, 0, sizeof(struct Peer));
 
-    // Get our own ID
     if (get_own_id(&out_peer->peer_id) != 0) {
         log_msg(LOG_ERROR, "create_own_peer: get_own_id error");
         return -1;
     }
 
-
     char ip[INET_ADDRSTRLEN] = {0};
-    // Get primary IP and fill sockaddr_in
     if (get_primary_ip(ip, sizeof(ip), &out_peer->peer_addr) != 0) {
         log_msg(LOG_ERROR, "create_own_peer: get_primary_ip error");
         return -1;
     }
 
-    // Optional: set public key if you have one
     out_peer->peer_pub_key = NULL;
 
     return 0;

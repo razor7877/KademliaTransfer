@@ -48,7 +48,7 @@ static struct Schedule tasks[] = {
  * @param buf_index Current index into the buffer
  */
 static void get_rpc_request(struct pollfd* sock, char* buf) {
-    log_msg(LOG_INFO, "Handling P2P request");
+    // log_msg(LOG_INFO, "Handling P2P request");
 
     int sock_type = 0;
     socklen_t optlen = sizeof(sock_type);
@@ -85,7 +85,7 @@ static void get_rpc_request(struct pollfd* sock, char* buf) {
 
     // Interpret header
     struct RPCMessageHeader* header = (struct RPCMessageHeader*)buf;
-    log_msg(LOG_INFO, "Packet size is: %d", header->packet_size);
+    // log_msg(LOG_INFO, "Packet size is: %d", header->packet_size);
 
     if (header->packet_size > MAX_RPC_PACKET_SIZE) {
         log_msg(LOG_ERROR, "Packet too large! Discarding.");
@@ -159,8 +159,12 @@ static void broadcast_discovery_request(void) {
   struct Peer peer;
   create_own_peer(&peer);
 
+  peer.peer_addr.sin_port = htons(SERVER_PORT);
+
   struct RPCPeer* serialized_peer = serialize_rpc_peer(&peer);
   request.peer = *serialized_peer;
+  
+  // log_msg(LOG_WARN, "Sending broadcast with addr with port %d", ntohs(peer.peer_addr.sin_port));
 
   free(serialized_peer);
 

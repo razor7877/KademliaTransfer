@@ -123,7 +123,7 @@ void update_bucket_peers(Buckets bucket, struct Peer* peer) {
     return;
   }
 
-  log_msg(LOG_DEBUG, "bucket_index is %d", bucket_index);
+  // log_msg(LOG_DEBUG, "bucket_index is %d", bucket_index);
 
   if (bucket[bucket_index].size >= BUCKET_SIZE) {
     log_msg(LOG_DEBUG, "[update_bucket_peers]: The Bucket is full");
@@ -131,9 +131,10 @@ void update_bucket_peers(Buckets bucket, struct Peer* peer) {
   }
 
   if (find_peer_by_id(&bucket[bucket_index], peer->peer_id)) {
-    log_msg(LOG_DEBUG, "[update_bucket_peers]: Peer already present in bucket");
+    // log_msg(LOG_DEBUG, "[update_bucket_peers]: Peer already present in bucket");
     return;
   }
 
+  log_msg(LOG_DEBUG, "got new peer in bucket with port %d", ntohs(peer->peer_addr.sin_port));
   add_front(&bucket[bucket_index], peer); 
 }

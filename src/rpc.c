@@ -65,7 +65,7 @@ static void handle_find_node(struct pollfd* sock, struct RPCFind* data) {
         .closest = {0}
     };
     
-    struct Peer** closest = find_closest_peers(buckets, &data->key, 1);
+    struct Peer** closest = find_closest_peers(buckets, data->key, 1);
 
     if (closest == NULL) {
         log_msg(LOG_ERROR, "handle_find_node find_closest_peers returned NULL");
@@ -86,14 +86,14 @@ static void handle_find_value(struct pollfd* sock, struct RPCFind* data) {
 static void handle_broadcast(struct pollfd* sock, struct RPCBroadcast* data) {
     struct Peer* peer = deserialize_rpc_peer(&data->peer);
 
-    log_msg(LOG_DEBUG, "Handling RPC broadcast packet");
+    // log_msg(LOG_DEBUG, "Handling RPC broadcast packet");
     update_bucket_peers(buckets, peer);
 
     free(peer);
 }
 
 void handle_rpc_request(struct pollfd* sock, char* contents, size_t length) {
-    log_msg(LOG_DEBUG, "Handling RPC request in RPC layer");
+    // log_msg(LOG_DEBUG, "Handling RPC request in RPC layer");
 
     size_t expected_size = 0;
 
@@ -111,7 +111,7 @@ void handle_rpc_request(struct pollfd* sock, char* contents, size_t length) {
             return;
 	}
 
-	log_msg(LOG_DEBUG, "Claimed size is: %d - Expected size is: %ld", header->packet_size, expected_size);
+	// log_msg(LOG_DEBUG, "Claimed size is: %d - Expected size is: %ld", header->packet_size, expected_size);
 
 	if (header->packet_size != expected_size) {
 		log_msg(LOG_ERROR, "Claimed size doesn't match expected, discarding packet!");
@@ -149,7 +149,7 @@ void handle_rpc_upload(struct FileMagnet* file) {
     storage_put_value(&kv);
 
     int k = K_VALUE;
-    struct Peer** closest = find_closest_peers(buckets, &file_key, k);
+    struct Peer** closest = find_closest_peers(buckets, file_key, k);
 
     if (!closest) {
         log_msg(LOG_WARN, "handle_rpc_upload: no peers available for STORE propagation");
@@ -168,18 +168,19 @@ void handle_rpc_upload(struct FileMagnet* file) {
         
     memcpy(&store_req.key_value, serialized_kv, sizeof(struct RPCKeyValue));
 
-    struct Peer zeros = {0};
-
     for (int i = 0; i < k; i++) {
-        // Continue if empty
-        // Super ugly, find_closest_peers should be updated to output the number of peers found
-        if (memcmp(&closest[i], &zeros, sizeof(zeros)) == 0)
+        if (closest[i] == NULL) {
+            log_msg(LOG_DEBUG, "Skipping NULL peer");
             continue;
-        
+        }
+
         log_msg(LOG_DEBUG, "Sending store to closest peer %d", i);
 
         int sock = connect_to_peer(&closest[i]->peer_addr);
-        if (sock < 0) continue;
+        if (sock < 0) {
+            log_msg(LOG_DEBUG, "Skipping because no connection");
+            continue;
+        }
 
         send_all(sock, &store_req, sizeof(store_req));
         close(sock);
