@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <poll.h>
 #include <errno.h>
+#include <time.h>
 
 #include "client.h"
 #include "command.h"
@@ -34,7 +35,7 @@ static int listen_fd = 0;
 static int broad_fd = 0;
 static void broadcast_discovery_request(void);
 static struct Schedule tasks[] = {
-    {"broadcast_discovery", 0, 30, broadcast_discovery_request},
+    {"broadcast_discovery", 0, 1.0, broadcast_discovery_request},
     {NULL, 0, 0, NULL}};
 
 /**
@@ -109,8 +110,28 @@ static void broadcast_discovery_request(void) {
   server_addr.sin_port = htons(BROADCAST_PORT);
   server_addr.sin_addr.s_addr = htonl(INADDR_BROADCAST);
 
-  ssize_t sent = sendto(sock_array[1].fd, RPC_MAGIC, sizeof(RPC_MAGIC), 0,
+  struct RPCBroadcast request = {
+    .header = {
+      .magic_number = RPC_MAGIC,
+      .packet_size = sizeof(struct RPCPing),
+      .call_type = PING,
+    },
+    .peer = {0}
+  };
+
+  struct Peer peer;
+  create_own_peer(&peer);
+
+  struct RPCPeer* serialized_peer = serialize_rpc_peer(&peer);
+
+  request.peer = *serialized_peer;
+
+  free(serialized_peer);
+
+  // Broadcast a RPC ping packet to everyone with our info
+  ssize_t sent = sendto(sock_array[1].fd, &request, sizeof(request), 0,
                         (struct sockaddr*)&server_addr, sizeof(server_addr));
+
   if (sent < 0) {
     perror("sendto");
   } else {
@@ -148,20 +169,74 @@ static void handle_incoming() {
       perror("Error while trying to accept new connection");
 
     sock_array[0].revents = 0;
-  } else if (sock_array[1].revents && POLLIN) {
+  }
+  
+  if (sock_array[1].revents && POLLIN) {
     struct sockaddr_in client_addr = {0};
     socklen_t size = sizeof(client_addr);
 
-    char peek_buf[4] = {0};
-    ssize_t peeked = recvfrom(sock_array[1].fd, peek_buf, sizeof(peek_buf), 0,
-                              (struct sockaddr*)&client_addr, &size);
-    if (peeked < 0)
-      perror("recvfrom broadcast peek");
-    else {
-      log_msg(LOG_DEBUG, "UDP broadcast from %s:%d - %s",
-              inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port),
-              peek_buf);
+    uint8_t peek_buf[8] = {0};
+    ssize_t recvd = recvfrom(sock_array[1].fd, peek_buf, sizeof(peek_buf),
+                              MSG_PEEK, (struct sockaddr*)&client_addr, &size);
+
+    if (recvd < 0) {
+        perror("recvfrom peek");
+        sock_array[1].revents = 0;
+        return;
     }
+
+    if (recvd < 8) {
+        log_msg(LOG_WARN, "Incomplete UDP header from %s:%d",
+                inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+        sock_array[1].revents = 0;
+        return;
+    }
+
+    // Validate KDMT magic
+    if (memcmp(peek_buf, RPC_MAGIC, 4) != 0) {
+        log_msg(LOG_WARN, "Invalid KDMT magic from %s:%d",
+                inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+        // Consume and discard
+        char discard[1024];
+        recvfrom(sock_array[1].fd, discard, sizeof(discard), 0, NULL, NULL);
+        sock_array[1].revents = 0;
+        return;
+    }
+
+    // Read packet size
+    uint32_t packet_size = 0;
+    memcpy(&packet_size, peek_buf + 4, 4);
+    packet_size = ntohl(packet_size);
+
+    if (packet_size != sizeof(struct RPCBroadcast)) {
+        log_msg(LOG_WARN, "Unexpected packet size %u from %s:%d",
+                packet_size, inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+        char discard[1024];
+        recvfrom(sock_array[1].fd, discard,
+                  packet_size > sizeof(discard) ? sizeof(discard) : packet_size,
+                  0, NULL, NULL);
+        sock_array[1].revents = 0;
+        return;
+    }
+
+    // Now read full packet
+    struct RPCBroadcast broadcast_packet = {0};
+    recvd = recvfrom(sock_array[1].fd, &broadcast_packet, sizeof(broadcast_packet),
+                      0, (struct sockaddr*)&client_addr, &size);
+
+    if (recvd != sizeof(struct RPCBroadcast)) {
+        log_msg(LOG_ERROR, "Failed to read full RPCBroadcast from %s:%d",
+                inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+        sock_array[1].revents = 0;
+        return;
+    }
+
+    log_msg(LOG_INFO, "Received valid RPCBroadcast from %s:%d",
+            inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+
+    // Pass to RPC layer
+    handle_rpc_request(&sock_array[1], (char*)&broadcast_packet, sizeof(broadcast_packet));
+
     sock_array[1].revents = 0;
   }
 }
@@ -340,6 +415,7 @@ void update_network() {
 
   // Handle requests from connected peers
   handle_connected();
+
   // Check periodic task
   handle_tasks();
 }
@@ -360,7 +436,7 @@ int connect_to_peer(const struct sockaddr_in* addr) {
         return -1;
     }
 
-	// Set timeouts so we dont entirely block the app if the peer doesn't respond
+	  // Set timeouts so we dont entirely block the app if the peer doesn't respond
     struct timeval timeout = { .tv_sec = 3, .tv_usec = 0 };
     setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
     setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));

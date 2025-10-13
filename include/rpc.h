@@ -42,7 +42,8 @@ enum RPCCallType {
   PING_RESPONSE = 16,
   STORE_RESPONSE = 32,
   FIND_NODE_RESPONSE = 64,
-  FIND_VALUE_RESPONSE = 128
+  FIND_VALUE_RESPONSE = 128,
+  BROADCAST = 256
 };
 
 struct RPCPeer {
@@ -65,6 +66,11 @@ struct RPCMessageHeader {
 
 struct RPCPing {
   struct RPCMessageHeader header;
+};
+
+struct RPCBroadcast {
+  struct RPCMessageHeader header;
+  struct RPCPeer peer;
 };
 
 struct RPCStore {

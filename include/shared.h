@@ -12,6 +12,8 @@
 
 #define K_VALUE 2
 
+struct Peer;
+
 /**
  * @file shared.h
  * @brief Shared Functions
@@ -89,6 +91,7 @@ int sha256_buf(const unsigned char* in_buf, size_t buf_size, unsigned char* out_
 
 int get_primary_ip(char* ip_buf, size_t buf_size, struct sockaddr_in* out_addr);
 int get_own_id(HashID* out);
+int create_own_peer(struct Peer* out_peer);
 
 /**
  * @brief Converts a SHA-256 hash to a hex string.

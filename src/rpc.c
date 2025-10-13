@@ -65,7 +65,7 @@ static void handle_find_node(struct pollfd* sock, struct RPCFind* data) {
         .closest = {0}
     };
     
-    struct Peer** closest = find_closest_peers(&buckets, &data->key, 1);
+    struct Peer** closest = find_closest_peers(buckets, &data->key, 1);
 
     if (closest == NULL) {
         log_msg(LOG_ERROR, "handle_find_node find_closest_peers returned NULL");
@@ -83,6 +83,15 @@ static void handle_find_value(struct pollfd* sock, struct RPCFind* data) {
     log_msg(LOG_DEBUG, "Handling RPC find value");
 }
 
+static void handle_broadcast(struct pollfd* sock, struct RPCBroadcast* data) {
+    struct Peer* peer = deserialize_rpc_peer(&data->peer);
+
+    log_msg(LOG_DEBUG, "Handling RPC broadcast packet");
+    update_bucket_peers(buckets, peer);
+
+    free(peer);
+}
+
 void handle_rpc_request(struct pollfd* sock, char* contents, size_t length) {
     log_msg(LOG_DEBUG, "Handling RPC request in RPC layer");
 
@@ -95,6 +104,7 @@ void handle_rpc_request(struct pollfd* sock, char* contents, size_t length) {
 		case STORE: expected_size = sizeof(struct RPCStore); break;
 		case FIND_NODE: expected_size = sizeof(struct RPCFind); break;
 		case FIND_VALUE: expected_size = sizeof(struct RPCFind); break;
+        case BROADCAST: expected_size = sizeof(struct RPCBroadcast); break;
 
 		default:
 			log_msg(LOG_ERROR, "Got invalid RPC request!");
@@ -112,7 +122,8 @@ void handle_rpc_request(struct pollfd* sock, char* contents, size_t length) {
 		case PING: handle_ping(sock, (struct RPCPing*)contents); break;
 		case STORE: handle_store(sock, (struct RPCStore*)contents); break;
 		case FIND_NODE: handle_find_node(sock, (struct RPCFind*)contents); break;
-		case FIND_VALUE: handle_find_value(sock, (struct RPCFind*)contents);; break;
+		case FIND_VALUE: handle_find_value(sock, (struct RPCFind*)contents); break;
+        case BROADCAST: handle_broadcast(sock, (struct RPCBroadcast*)contents); break;
 	}
 }
 
@@ -132,22 +143,13 @@ void handle_rpc_upload(struct FileMagnet* file) {
         .num_values = 1
     };
     memcpy(kv.key, file_key, sizeof(HashID));
-
-    // Store our own ID as owner of the value
-    if (get_own_id(&kv.values[0].peer_id) != 0) {
-        log_msg(LOG_ERROR, "get_own_id error in handle_rpc_upload");
-        return;
-    }
-
-    char ip[INET_ADDRSTRLEN] = {0};
-
-    get_primary_ip(ip, sizeof(ip), &kv.values[0].peer_addr);
-    kv.values[0].peer_pub_key = NULL;
+    // Create peer with our info in the KeyValuePair
+    create_own_peer(&kv.values[0]);
 
     storage_put_value(&kv);
 
     int k = K_VALUE;
-    struct Peer** closest = find_closest_peers(&buckets, &file_key, k);
+    struct Peer** closest = find_closest_peers(buckets, &file_key, k);
 
     if (!closest) {
         log_msg(LOG_WARN, "handle_rpc_upload: no peers available for STORE propagation");
