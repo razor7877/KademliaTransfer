@@ -26,9 +26,9 @@ static int get_bucket_index(HashID* distance) {
     return -1;
 };
 
-struct Peer* find_closest_peers(Buckets* buckets, HashID* target, int n) {
+struct Peer** find_closest_peers(Buckets buckets, HashID* target, int n) {
     // log_msg(LOG_DEBUG, "Searching for %d closest peers to ")
-    struct Peer* result = malloc(n * sizeof(struct Peer));
+    struct Peer** result = calloc(n, sizeof(struct Peer*));
     pointer_not_null(result, "find_closest_peers malloc error");
     
     char target_str[sizeof(HashID) * 2 + 1] = {0};
@@ -61,6 +61,27 @@ struct Peer* find_closest_peers(Buckets* buckets, HashID* target, int n) {
     }
 
     log_msg(LOG_DEBUG, "Bucket index for this distance is %d", bucket_index);
+
+    // First get nodes from the bucket with nodes closest to the target
+    count += find_nearest(&buckets[bucket_index], target, result + count, n - count);
+
+    // Extend our range to neighboring buckets until we searched everything or found the number of requested peers
+    int offset = 1;
+
+    while (count < n && (bucket_index - offset >= 0 || bucket_index + offset < BUCKET_COUNT)) {
+        if (bucket_index - offset >= 0)
+            count += find_nearest(&buckets[bucket_index - offset], target, result + count, n - count);
+        
+        if (bucket_index + offset < BUCKET_COUNT)
+            count += find_nearest(&buckets[bucket_index + offset], target, result + count, n - count);
+        
+        offset++;
+    }
+
+    if (count == 0) {
+        free(result);
+        return NULL;
+    }
 
     return result;
 }

@@ -212,7 +212,7 @@ int sha256_buf(const unsigned char* in_buf, size_t buf_size, unsigned char* out_
 	return 0;
 }
 
-static int get_primary_ip(char* ip_buf, size_t buf_size) {
+int get_primary_ip(char* ip_buf, size_t buf_size, struct sockaddr_in* out_addr) {
     int sock = socket(AF_INET, SOCK_DGRAM, 0);
     if (sock < 0) {
         log_msg(LOG_ERROR, "get_primary_ip socket error");
@@ -246,12 +246,16 @@ static int get_primary_ip(char* ip_buf, size_t buf_size) {
     const char* result = inet_ntop(AF_INET, &name.sin_addr, ip_buf, buf_size);
     close(sock);
 
+    if (out_addr) {
+        memcpy(out_addr, &name, sizeof(struct sockaddr_in));
+    }
+
     return (result != NULL) ? 0 : -1;
 }
 
 int get_own_id(HashID* out) {
     char ip[INET_ADDRSTRLEN] = {0};
-    if (get_primary_ip(ip, sizeof(ip)) != 0) {
+    if (get_primary_ip(ip, sizeof(ip), NULL) != 0) {
         log_msg(LOG_ERROR, "get_own_id get_primary_ip error");
         return -1;
     }
@@ -263,11 +267,11 @@ int get_own_id(HashID* out) {
     sha256_buf(ip, strlen(ip), ip_hash);
     log_msg(LOG_DEBUG, "IP length is: %d", strlen(ip));
 
-	char hash_str[sizeof(HashID) * 2 + 1] = {0};
-	sha256_to_hex((HashID*)ip_hash, hash_str);
+    char hash_str[sizeof(HashID) * 2 + 1] = {0};
+    sha256_to_hex((HashID*)ip_hash, hash_str);
     log_msg(LOG_DEBUG, "Hash: %s", hash_str);
 
-	return 0;
+	  return 0;
 }
 
 void sha256_to_hex(const HashID* hash, char* str_buf) {

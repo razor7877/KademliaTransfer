@@ -87,6 +87,7 @@ void pointer_not_null(void* ptr, const char* message);
 int sha256_file(const char* filename, HashID* id);
 int sha256_buf(const unsigned char* in_buf, size_t buf_size, unsigned char* out_buf);
 
+int get_primary_ip(char* ip_buf, size_t buf_size, struct sockaddr_in* out_addr);
 int get_own_id(HashID* out);
 
 /**
