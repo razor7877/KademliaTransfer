@@ -1,5 +1,7 @@
 #pragma once
 
+#include <netinet/in.h>
+
 /**
  * @file network.h
  * @brief Network transport functionality : Sending over TCP, TLS etc.
@@ -26,3 +28,5 @@ void update_network();
  * 
  */
 void stop_network();
+
+int connect_to_peer(const struct sockaddr_in* addr);

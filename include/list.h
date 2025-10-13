@@ -96,12 +96,22 @@ struct Peer* remove_front(struct DList* list);
 struct Peer* remove_back(struct DList* list);
 
 /**
+ * @brief Calculate the XOR distance between two HashID
+ * @param result Buffer where the result is stored
+ * @param id1 First HashID
+ * @param id2 Second HashID
+ */
+void dist_hash(HashID* result, const HashID* id1, const HashID* id2);
+
+/**
  * @brief Finds the nearest node to a hash in the linked list
  *
  * @param list The list in which to search
  * @param id The id that should be matched as closely as possible
- * @return Peer* A pointer to the nearest node in the list, or NULL if there are
- * none
+ * @param out_peers 
+ * @param max_neighbors 
+ * @return int 
  */
-struct Peer** find_nearest(const struct DList* list, const HashID* id,
+int find_nearest(const struct DList* list, const HashID* id,
+                           struct Peer** out_peers,
                            size_t max_neighbors);

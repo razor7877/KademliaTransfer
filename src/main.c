@@ -154,12 +154,14 @@ void cli_upload_file() {
 void cli_show_network_status() {
     show_network_status();
 }
-
+#include "peer.h"
 int main(int argc, char** argv) {
     if (start_client() != 0) {
         perror("P2P client didn't start properly");
         exit(EXIT_FAILURE);
     }
+
+    log_msg(LOG_INFO, "sizeof(RPCPeer) is %d", sizeof(struct RPCPeer));
     
     bool running = true;
     char input[INPUT_SIZE] = {0};

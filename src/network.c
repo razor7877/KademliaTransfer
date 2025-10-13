@@ -10,6 +10,8 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <poll.h>
+#include <errno.h>
 
 #include "client.h"
 #include "command.h"
@@ -342,4 +344,39 @@ void update_network() {
   handle_tasks();
 }
 
-void stop_network() { log_msg(LOG_INFO, "Stopping network stack"); }
+void stop_network() {
+    log_msg(LOG_INFO, "Stopping network stack");
+}
+
+int connect_to_peer(const struct sockaddr_in* addr) {
+    if (!addr) {
+        log_msg(LOG_ERROR, "connect_to_peer: NULL address");
+        return -1;
+    }
+
+    int sock = socket(AF_INET, SOCK_STREAM, 0);
+    if (sock < 0) {
+        log_msg(LOG_ERROR, "connect_to_peer: socket() failed: %s", strerror(errno));
+        return -1;
+    }
+
+	// Set timeouts so we dont entirely block the app if the peer doesn't respond
+    struct timeval timeout = { .tv_sec = 3, .tv_usec = 0 };
+    setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+    setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
+
+    char ip_str[INET_ADDRSTRLEN] = {0};
+    inet_ntop(AF_INET, &addr->sin_addr, ip_str, sizeof(ip_str));
+
+    log_msg(LOG_DEBUG, "Connecting to peer %s:%d", ip_str, ntohs(addr->sin_port));
+
+    if (connect(sock, (const struct sockaddr*)addr, sizeof(*addr)) < 0) {
+        log_msg(LOG_WARN, "connect_to_peer: connect() failed to %s:%d (%s)",
+                ip_str, ntohs(addr->sin_port), strerror(errno));
+        close(sock);
+        return -1;
+    }
+
+    log_msg(LOG_DEBUG, "Connected successfully to %s:%d", ip_str, ntohs(addr->sin_port));
+    return sock;
+}

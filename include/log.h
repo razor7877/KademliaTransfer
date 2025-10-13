@@ -3,6 +3,13 @@
 #include <stdio.h>
 #include <stdarg.h>
 
+/**
+ * @file log.h
+ * @brief Helper functions for elegant message logging to the terminal
+ * 
+ * 
+ */
+
 enum LogLevel {
     LOG_INFO,
     LOG_WARN,
