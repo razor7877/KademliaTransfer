@@ -101,7 +101,7 @@ struct Peer* remove_back(struct DList* list);
  * @param id1 First HashID
  * @param id2 Second HashID
  */
-void dist_hash(HashID* result, const HashID* id1, const HashID* id2);
+void dist_hash(HashID result, const HashID id1, const HashID id2);
 
 /**
  * @brief Finds the nearest node to a hash in the linked list
@@ -112,6 +112,15 @@ void dist_hash(HashID* result, const HashID* id1, const HashID* id2);
  * @param max_neighbors 
  * @return int 
  */
-int find_nearest(const struct DList* list, const HashID* id,
+int find_nearest(const struct DList* list, const HashID id,
                            struct Peer** out_peers,
                            size_t max_neighbors);
+
+/**
+ * @brief Checks if a peer with a given ID exists in the list
+ *
+ * @param list The list to search
+ * @param id The peer ID to look for
+ * @return struct Peer* Pointer to the found peer, or NULL if not found
+ */
+struct Peer* find_peer_by_id(const struct DList* list, const HashID id);

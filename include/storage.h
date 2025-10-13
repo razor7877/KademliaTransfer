@@ -29,7 +29,7 @@ struct KeyValuePair {
  * @param key The key to be queried for in the client storage
  * @return const struct KeyValuePair* Returns the key-value pair if it exists, NULL otherwise
  */
-const struct KeyValuePair* storage_get_value(HashID* key);
+const struct KeyValuePair* storage_get_value(HashID key);
 
 /**
  * @brief Stores a key-value pair in the client storage

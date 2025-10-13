@@ -6,6 +6,7 @@
 
 #include "client.h"
 #include "log.h"
+#include "peer.h"
 
 #define INPUT_SIZE 256
 #define FILENAME_SIZE 512
@@ -154,7 +155,7 @@ void cli_upload_file() {
 void cli_show_network_status() {
     show_network_status();
 }
-#include "peer.h"
+
 int main(int argc, char** argv) {
     if (start_client() != 0) {
         perror("P2P client didn't start properly");

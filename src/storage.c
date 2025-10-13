@@ -67,7 +67,7 @@ static void storage_init() {
     storage_ready = true;
 }
 
-const struct KeyValuePair* storage_get_value(HashID* key) {
+const struct KeyValuePair* storage_get_value(HashID key) {
     if (!storage_ready) storage_init();
 
     log_msg(LOG_DEBUG, "storage_get_value");

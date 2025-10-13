@@ -1,9 +1,7 @@
 #define _GNU_SOURCE
-#include "network.h"
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
-#include <poll.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,6 +11,7 @@
 #include <poll.h>
 #include <errno.h>
 #include <time.h>
+#include <sys/types.h>
 
 #include "client.h"
 #include "command.h"
@@ -21,6 +20,7 @@
 #include "rpc.h"
 #include "schedule.h"
 #include "shared.h"
+#include "network.h"
 
 #define MAX_WAIT_CON 5
 #define MAX_SOCK 128
@@ -35,8 +35,9 @@ static int listen_fd = 0;
 static int broad_fd = 0;
 static void broadcast_discovery_request(void);
 static struct Schedule tasks[] = {
-    {"broadcast_discovery", 0, 1.0, broadcast_discovery_request},
-    {NULL, 0, 0, NULL}};
+    { "broadcast_discovery", 0, 1.0, broadcast_discovery_request },
+    { NULL, 0, 0, NULL }
+};
 
 /**
  * @brief Gets the contents of the entire RPC request according to the request
@@ -47,33 +48,69 @@ static struct Schedule tasks[] = {
  * @param buf_index Current index into the buffer
  */
 static void get_rpc_request(struct pollfd* sock, char* buf) {
-  log_msg(LOG_INFO, "Handling P2P request");
+    log_msg(LOG_INFO, "Handling P2P request");
 
-  // We already read the 4 bytes magic, read the rest of the header
-  int received = recv_all(sock->fd, buf, sizeof(struct RPCMessageHeader));
+    int sock_type = 0;
+    socklen_t optlen = sizeof(sock_type);
+    if (getsockopt(sock->fd, SOL_SOCKET, SO_TYPE, &sock_type, &optlen) < 0) {
+        perror("getsockopt");
+        return;
+    }
 
-  // Interpret the data as RPC header
-  struct RPCMessageHeader* header = (struct RPCMessageHeader*)buf;
+    ssize_t received = 0;
 
-  log_msg(LOG_INFO, "Packet size is: %d", header->packet_size);
+    if (sock_type == SOCK_STREAM) {
+        // TCP: read header first
+        received = recv_all(sock->fd, buf, sizeof(struct RPCMessageHeader));
+        if (received < sizeof(struct RPCMessageHeader)) {
+            log_msg(LOG_ERROR, "Failed to read RPC header");
+            return;
+        }
+    }
+    else if (sock_type == SOCK_DGRAM) {
+        // UDP: single recvfrom will give entire datagram
+        struct sockaddr_in from_addr = {0};
+        socklen_t from_len = sizeof(from_addr);
+        received = recvfrom(sock->fd, buf, MAX_RPC_PACKET_SIZE, 0,
+                            (struct sockaddr*)&from_addr, &from_len);
+        if (received <= 0) {
+            perror("recvfrom");
+            return;
+        }
+    }
+    else {
+        log_msg(LOG_ERROR, "Unknown socket type");
+        return;
+    }
 
-  if (header->packet_size > MAX_RPC_PACKET_SIZE) {
-    log_msg(LOG_ERROR, "Packet too large! Discarding.");
-    return;
-  }
+    // Interpret header
+    struct RPCMessageHeader* header = (struct RPCMessageHeader*)buf;
+    log_msg(LOG_INFO, "Packet size is: %d", header->packet_size);
 
-  // Get the rest of the packet
-  received = recv_all(sock->fd, buf + sizeof(struct RPCMessageHeader),
-                      header->packet_size - sizeof(struct RPCMessageHeader));
+    if (header->packet_size > MAX_RPC_PACKET_SIZE) {
+        log_msg(LOG_ERROR, "Packet too large! Discarding.");
+        return;
+    }
 
-  if (received < 0) {
-    log_msg(LOG_ERROR,
-            "Error while trying to read entire RPC request. Skipping...");
-    return;
-  }
+    if (sock_type == SOCK_STREAM) {
+        // TCP: read rest of packet
+        received = recv_all(sock->fd, buf + sizeof(struct RPCMessageHeader),
+                            header->packet_size - sizeof(struct RPCMessageHeader));
+        if (received < 0) {
+            log_msg(LOG_ERROR, "Error reading full RPC request");
+            return;
+        }
+    }
+    else {
+        // UDP: we already got the full packet in one recvfrom
+        if (received != header->packet_size) {
+            log_msg(LOG_WARN, "UDP packet size mismatch: got %zd, expected %u", received, header->packet_size);
+            return;
+        }
+    }
 
-  // Pass the RPC packet to the RPC layer
-  handle_rpc_request(sock, buf, header->packet_size);
+    // Pass packet to RPC layer
+    handle_rpc_request(sock, buf, header->packet_size);
 }
 
 /**
@@ -100,7 +137,7 @@ static void get_http_request(struct pollfd* sock, char* buf) {
 }
 
 /**
- * @brief Called in the network update loop. Sent broadcast discovery request
+ * @brief Called in the network update loop. Sends a broadcast discovery request
  *
  */
 static void broadcast_discovery_request(void) {
@@ -113,8 +150,8 @@ static void broadcast_discovery_request(void) {
   struct RPCBroadcast request = {
     .header = {
       .magic_number = RPC_MAGIC,
-      .packet_size = sizeof(struct RPCPing),
-      .call_type = PING,
+      .packet_size = sizeof(struct RPCBroadcast),
+      .call_type = BROADCAST,
     },
     .peer = {0}
   };
@@ -123,20 +160,15 @@ static void broadcast_discovery_request(void) {
   create_own_peer(&peer);
 
   struct RPCPeer* serialized_peer = serialize_rpc_peer(&peer);
-
   request.peer = *serialized_peer;
 
   free(serialized_peer);
 
   // Broadcast a RPC ping packet to everyone with our info
-  ssize_t sent = sendto(sock_array[1].fd, &request, sizeof(request), 0,
-                        (struct sockaddr*)&server_addr, sizeof(server_addr));
+  ssize_t sent = sendto(sock_array[1].fd, &request, sizeof(request), 0, (struct sockaddr*)&server_addr, sizeof(server_addr));
 
-  if (sent < 0) {
+  if (sent < 0)
     perror("sendto");
-  } else {
-    log_msg(LOG_INFO, "Running new node discovery");
-  }
 }
 
 /**
@@ -172,70 +204,48 @@ static void handle_incoming() {
   }
   
   if (sock_array[1].revents && POLLIN) {
+    // log_msg(LOG_DEBUG, "Receiving data on broadcast port");
+
     struct sockaddr_in client_addr = {0};
     socklen_t size = sizeof(client_addr);
 
-    uint8_t peek_buf[8] = {0};
-    ssize_t recvd = recvfrom(sock_array[1].fd, peek_buf, sizeof(peek_buf),
-                              MSG_PEEK, (struct sockaddr*)&client_addr, &size);
+    // Peek first 4 bytes to check magic
+    uint8_t peek_magic[4] = {0};
+    ssize_t recvd = recvfrom(sock_array[1].fd, peek_magic, sizeof(peek_magic), MSG_PEEK, (struct sockaddr*)&client_addr, &size);
+    
+    char my_ip[INET_ADDRSTRLEN] = {0};
+    struct sockaddr_in my_addr;
+    
+    if (get_primary_ip(my_ip, sizeof(my_ip), &my_addr) == 0) {
+        if (client_addr.sin_addr.s_addr == my_addr.sin_addr.s_addr) {
+            // This is our own broadcast, ignore
+            // log_msg(LOG_DEBUG, "Ignoring our own broadcast");
+            char discard[MAX_RPC_PACKET_SIZE];
+            // Make sure to consume data from the internal buffer
+            recvfrom(sock_array[1].fd, discard, sizeof(discard), 0, NULL, NULL);
+            sock_array[1].revents = 0;
+            return;
+        }
+    }
 
-    if (recvd < 0) {
-        perror("recvfrom peek");
+    if (recvd < 4) {
+        log_msg(LOG_WARN, "Incomplete UDP magic from %s:%d", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
         sock_array[1].revents = 0;
         return;
     }
 
-    if (recvd < 8) {
-        log_msg(LOG_WARN, "Incomplete UDP header from %s:%d",
-                inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
-        sock_array[1].revents = 0;
-        return;
-    }
-
-    // Validate KDMT magic
-    if (memcmp(peek_buf, RPC_MAGIC, 4) != 0) {
-        log_msg(LOG_WARN, "Invalid KDMT magic from %s:%d",
-                inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
-        // Consume and discard
+    if (memcmp(peek_magic, RPC_MAGIC, 4) != 0) {
+        log_msg(LOG_WARN, "Invalid RPC magic from %s:%d", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+        // Consume/discard
         char discard[1024];
         recvfrom(sock_array[1].fd, discard, sizeof(discard), 0, NULL, NULL);
         sock_array[1].revents = 0;
         return;
     }
 
-    // Read packet size
-    uint32_t packet_size = 0;
-    memcpy(&packet_size, peek_buf + 4, 4);
-    packet_size = ntohl(packet_size);
-
-    if (packet_size != sizeof(struct RPCBroadcast)) {
-        log_msg(LOG_WARN, "Unexpected packet size %u from %s:%d",
-                packet_size, inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
-        char discard[1024];
-        recvfrom(sock_array[1].fd, discard,
-                  packet_size > sizeof(discard) ? sizeof(discard) : packet_size,
-                  0, NULL, NULL);
-        sock_array[1].revents = 0;
-        return;
-    }
-
-    // Now read full packet
-    struct RPCBroadcast broadcast_packet = {0};
-    recvd = recvfrom(sock_array[1].fd, &broadcast_packet, sizeof(broadcast_packet),
-                      0, (struct sockaddr*)&client_addr, &size);
-
-    if (recvd != sizeof(struct RPCBroadcast)) {
-        log_msg(LOG_ERROR, "Failed to read full RPCBroadcast from %s:%d",
-                inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
-        sock_array[1].revents = 0;
-        return;
-    }
-
-    log_msg(LOG_INFO, "Received valid RPCBroadcast from %s:%d",
-            inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
-
-    // Pass to RPC layer
-    handle_rpc_request(&sock_array[1], (char*)&broadcast_packet, sizeof(broadcast_packet));
+    // Use get_rpc_request() to read the full packet into buf and process it
+    struct pollfd udp_sock = sock_array[1];
+    get_rpc_request(&udp_sock, buf);
 
     sock_array[1].revents = 0;
   }
@@ -260,8 +270,7 @@ static void handle_connected() {
     // Handle message from connection
     if (sock_array[i].revents & POLLIN) {
       char peek_buf[4] = {0};
-      ssize_t peeked =
-          recv_all_peek(sock_array[i].fd, peek_buf, sizeof(peek_buf));
+      ssize_t peeked = recv_all_peek(sock_array[i].fd, peek_buf, sizeof(peek_buf));
 
       if (peeked <= 0) {
         if (peeked < 0)
@@ -310,7 +319,6 @@ static void handle_pending() {
 
         handle_rpc_upload(cmd.file);
 
-        log_msg(LOG_DEBUG, "Upload file");
         break;
 
       case CMD_DOWNLOAD:
@@ -321,7 +329,6 @@ static void handle_pending() {
 
         handle_rpc_download(cmd.file);
 
-        log_msg(LOG_DEBUG, "Download file");
         break;
 
       default:
@@ -330,7 +337,8 @@ static void handle_pending() {
     }
   }
 
-  if (had_commands) log_msg(LOG_DEBUG, "Finished handling commands");
+  if (had_commands)
+  log_msg(LOG_DEBUG, "Finished handling commands");
 }
 
 /**
@@ -349,59 +357,56 @@ static void handle_tasks() {
 }
 
 void init_network() {
-  log_msg(LOG_DEBUG, "Initializing network stack");
+    log_msg(LOG_DEBUG, "Initializing network stack");
 
-  listen_fd = socket(AF_INET, SOCK_STREAM, 0);
-  die(listen_fd, "socket");
+    listen_fd = socket(AF_INET, SOCK_STREAM, 0);
+    die(listen_fd, "socket");
 
-  int reuse = 1;
-  int ret =
-      setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
-  die(ret, "setsockopt(SO_REUSEADDR) failed");
+    int reuse = 1;
+    int ret = setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
+    die(ret, "setsockopt(SO_REUSEADDR) failed");
 
-  struct sockaddr_in server_addr;
-  server_addr.sin_family = AF_INET;
-  server_addr.sin_port = htons(SERVER_PORT);
-  server_addr.sin_addr.s_addr = INADDR_ANY;
+    struct sockaddr_in server_addr;
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(SERVER_PORT);
+    server_addr.sin_addr.s_addr = INADDR_ANY;
 
-  ret = bind(listen_fd, (struct sockaddr*)&server_addr, sizeof(server_addr));
-  die(ret, "bind");
+    ret = bind(listen_fd, (struct sockaddr*)&server_addr, sizeof(server_addr));
+    die(ret, "bind");
 
-  ret = listen(listen_fd, MAX_WAIT_CON);
-  die(ret, "listen");
+    ret = listen(listen_fd, MAX_WAIT_CON);
+    die(ret, "listen");
 
-  log_msg(LOG_DEBUG, "Server is listening on port %d...", SERVER_PORT);
+    log_msg(LOG_DEBUG, "Server is listening on port %d...", SERVER_PORT);
 
-  // Initialize listen socket
-  sock_array[0].fd = listen_fd;
-  sock_array[0].events = POLLIN;
-  sock_array[0].revents = 0;
+    // Initialize listen socket
+    sock_array[0].fd = listen_fd;
+    sock_array[0].events = POLLIN;
+    sock_array[0].revents = 0;
 
-  // Broadcast server init
-  broad_fd = socket(AF_INET, SOCK_DGRAM, 0);
-  die(broad_fd, "broadcast socket");
+    // Broadcast server init
+    broad_fd = socket(AF_INET, SOCK_DGRAM, 0);
+    die(broad_fd, "broadcast socket");
 
-  struct sockaddr_in broadcast_server_addr;
-  broadcast_server_addr.sin_family = AF_INET;
-  broadcast_server_addr.sin_port = htons(BROADCAST_PORT);
-  broadcast_server_addr.sin_addr.s_addr = INADDR_ANY;
-  int broad_ret =
-      setsockopt(broad_fd, SOL_SOCKET, SO_BROADCAST, &reuse, sizeof(reuse));
-  die(broad_ret, "setsockopt(SO_BROADCAST) failed");
+    struct sockaddr_in broadcast_server_addr;
+    broadcast_server_addr.sin_family = AF_INET;
+    broadcast_server_addr.sin_port = htons(BROADCAST_PORT);
+    broadcast_server_addr.sin_addr.s_addr = INADDR_ANY;
+    int broad_ret = setsockopt(broad_fd, SOL_SOCKET, SO_BROADCAST, &reuse, sizeof(reuse));
+    die(broad_ret, "setsockopt(SO_BROADCAST) failed");
 
-  broad_ret = bind(broad_fd, (struct sockaddr*)&broadcast_server_addr,
-                   sizeof(broadcast_server_addr));
-  die(broad_ret, "bind broadcast listen");
+    broad_ret = bind(broad_fd, (struct sockaddr*)&broadcast_server_addr, sizeof(broadcast_server_addr));
+    die(broad_ret, "bind broadcast listen");
 
-  log_msg(LOG_DEBUG, "Server Broadcast is listening on port %d...",
-          BROADCAST_PORT);
+    log_msg(LOG_DEBUG, "Server Broadcast is listening on port %d...", BROADCAST_PORT);
 
-  // Initialize listen socket
-  sock_array[1].fd = broad_fd;
-  sock_array[1].events = POLLIN;
-  sock_array[1].revents = 0;
+    // Initialize listen socket
+    sock_array[1].fd = broad_fd;
+    sock_array[1].events = POLLIN;
+    sock_array[1].revents = 0;
 
-  for (int i = 2; i < MAX_SOCK; i++) sock_array[i].fd = -1;
+    for (int i = 2; i < MAX_SOCK; i++)
+        sock_array[i].fd = -1;
 }
 
 void update_network() {
@@ -436,8 +441,11 @@ int connect_to_peer(const struct sockaddr_in* addr) {
         return -1;
     }
 
-	  // Set timeouts so we dont entirely block the app if the peer doesn't respond
-    struct timeval timeout = { .tv_sec = 3, .tv_usec = 0 };
+    // Set timeouts so we dont entirely block the client if the peer doesn't respond
+    struct timeval timeout = {
+        .tv_sec = 3,
+        .tv_usec = 0
+    };
     setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
     setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
 

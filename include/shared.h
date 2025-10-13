@@ -86,11 +86,11 @@ int min(const int a, const int b);
 
 void pointer_not_null(void* ptr, const char* message);
 
-int sha256_file(const char* filename, HashID* id);
+int sha256_file(const char* filename, HashID id);
 int sha256_buf(const unsigned char* in_buf, size_t buf_size, unsigned char* out_buf);
 
 int get_primary_ip(char* ip_buf, size_t buf_size, struct sockaddr_in* out_addr);
-int get_own_id(HashID* out);
+int get_own_id(HashID out);
 int create_own_peer(struct Peer* out_peer);
 
 /**
@@ -99,4 +99,4 @@ int create_own_peer(struct Peer* out_peer);
  * @param hash Pointer to 32-byte hash
  * @param str_buf Buffer to hold hex string, must be at least 65 bytes
  */
-void sha256_to_hex(const HashID* hash, char* str_buf);
+void sha256_to_hex(const HashID hash, char* str_buf);

@@ -141,7 +141,7 @@ void pointer_not_null(void * ptr, const char * message) {
 	}
 }
 
-int sha256_file(const char* filename, HashID* id) {
+int sha256_file(const char* filename, HashID id) {
   FILE* file = fopen(filename, "rb");
   if (!file) return -1;
   int bytes_read = 0;
@@ -192,7 +192,7 @@ int sha256_file(const char* filename, HashID* id) {
 int sha256_buf(const unsigned char* in_buf, size_t buf_size, unsigned char* out_buf) {
     EVP_MD_CTX* ctx = EVP_MD_CTX_new();
     if (!ctx) return -1;
-
+    
     if (EVP_DigestInit_ex(ctx, EVP_sha256(), NULL) != 1) {
         EVP_MD_CTX_free(ctx);
         return -1;
@@ -214,6 +214,20 @@ int sha256_buf(const unsigned char* in_buf, size_t buf_size, unsigned char* out_
 }
 
 int get_primary_ip(char* ip_buf, size_t buf_size, struct sockaddr_in* out_addr) {
+    // Static cache
+    static char cached_ip[INET_ADDRSTRLEN] = {0};
+    static struct sockaddr_in cached_addr = {0};
+    static bool cached = 0;
+
+    // Cache to avoid doing long network queries everytime we need our primary IP
+    if (cached) {
+        if (ip_buf)
+            strncpy(ip_buf, cached_ip, buf_size - 1);
+        if (out_addr)
+            memcpy(out_addr, &cached_addr, sizeof(struct sockaddr_in));
+        return 0;
+    }
+    
     int sock = socket(AF_INET, SOCK_DGRAM, 0);
     if (sock < 0) {
         log_msg(LOG_ERROR, "get_primary_ip socket error");
@@ -244,35 +258,59 @@ int get_primary_ip(char* ip_buf, size_t buf_size, struct sockaddr_in* out_addr) 
         return -1;
     }
 
-    const char* result = inet_ntop(AF_INET, &name.sin_addr, ip_buf, buf_size);
     close(sock);
 
-    if (out_addr) {
-        memcpy(out_addr, &name, sizeof(struct sockaddr_in));
-    }
+    const char* result = inet_ntop(AF_INET, &name.sin_addr, ip_buf, buf_size);
+    if (!result)
+        return -1;
 
-    return (result != NULL) ? 0 : -1;
+    strncpy(cached_ip, ip_buf, sizeof(cached_ip) - 1);
+    cached_addr = name;
+    cached = true;
+    
+    if (out_addr)
+        memcpy(out_addr, &name, sizeof(struct sockaddr_in));
+
+    return 0;
 }
 
-int get_own_id(HashID* out) {
+int get_own_id(HashID out) {
+    static HashID own_id = {0};
+    static bool cached = false;
+
+    if (!out) {
+        log_msg(LOG_ERROR, "get_own_id got NULL in out");
+        return -1;
+    }
+
+    if (cached) {
+        memcpy(out, own_id, sizeof(HashID));
+
+        char hash_str[sizeof(HashID) * 2 + 1] = {0};
+        sha256_to_hex(own_id, hash_str);
+        // log_msg(LOG_DEBUG, "Hash (cached): %s", hash_str);
+        return 0;
+    }
+
     char ip[INET_ADDRSTRLEN] = {0};
     if (get_primary_ip(ip, sizeof(ip), NULL) != 0) {
         log_msg(LOG_ERROR, "get_own_id get_primary_ip error");
         return -1;
     }
 
-    log_msg(LOG_DEBUG, "Client primary IP is: %s", ip);
-
-    unsigned char ip_hash[32] = {0};
-
-    sha256_buf(ip, strlen(ip), ip_hash);
-    log_msg(LOG_DEBUG, "IP length is: %d", strlen(ip));
-
     char hash_str[sizeof(HashID) * 2 + 1] = {0};
-    sha256_to_hex((HashID*)ip_hash, hash_str);
-    log_msg(LOG_DEBUG, "Hash: %s", hash_str);
 
-	  return 0;
+    sha256_buf(ip, strlen(ip), own_id);
+    sha256_to_hex(own_id, hash_str);
+
+    log_msg(LOG_DEBUG, "Client primary IP is: %s", ip);
+    log_msg(LOG_DEBUG, "IP length is: %d", strlen(ip));
+    log_msg(LOG_DEBUG, "Hash (computed): %s", hash_str);
+
+    cached = true;
+    memcpy(out, own_id, sizeof(HashID));
+
+	return 0;
 }
 
 int create_own_peer(struct Peer* out_peer) {
@@ -300,9 +338,9 @@ int create_own_peer(struct Peer* out_peer) {
     return 0;
 }
 
-void sha256_to_hex(const HashID* hash, char* str_buf) {
+void sha256_to_hex(const HashID hash, char* str_buf) {
     for (int i = 0; i < sizeof(HashID); i++) {
-        sprintf(str_buf + (i * 2), "%02x", *hash[i]);
+        sprintf(str_buf + (i * 2), "%02x", hash[i]);
     }
     str_buf[sizeof(HashID) * 2] = '\0'; // null-terminate
 }

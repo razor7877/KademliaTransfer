@@ -25,6 +25,6 @@
 
 typedef struct DList Buckets[BUCKET_COUNT];
 
-struct Peer** find_closest_peers(Buckets buckets, HashID* target, int n);
+struct Peer** find_closest_peers(Buckets buckets, HashID target, int n);
 
 void update_bucket_peers(Buckets bucket, struct Peer* peer);
