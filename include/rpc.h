@@ -93,6 +93,8 @@ struct RPCFindValueResponse {
   uint8_t success;
   uint8_t found_key;
   struct RPCKeyValue values;
+  size_t num_closest;
+  struct RPCPeer closest[K_VALUE];
 };
 
 struct RPCFindNodeResponse {

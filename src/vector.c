@@ -1,6 +1,8 @@
-#include "vector.h"
 #include <stdlib.h>
 #include <string.h>
+
+#include "vector.h"
+#include "shared.h"
 #include "log.h"
 
 void vector_init(VectorPtr* vec) {
@@ -15,7 +17,7 @@ void vector_push(VectorPtr* vec, void* elem) {
         vec->data = realloc(vec->data, vec->capacity * sizeof(void*));
         pointer_not_null(vec->data, "vector_push realloc failed");
     }
-    
+
     vec->data[vec->size++] = elem;
 }
 

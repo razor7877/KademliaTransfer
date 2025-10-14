@@ -82,6 +82,6 @@ void handle_http_request(struct pollfd* sock, char* contents, size_t length) {
     send_http_file(sock, file_path);
 }
 
-int download_http_file(struct Peer* peer, HashID file) {
+int download_http_file(const struct Peer* peer, HashID file) {
     return -1;
 }

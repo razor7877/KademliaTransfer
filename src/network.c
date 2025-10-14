@@ -39,22 +39,12 @@ static struct Schedule tasks[] = {
     { NULL, 0, 0, NULL }
 };
 
-/**
- * @brief Gets the contents of the entire RPC request according to the request
- * type before passing it to the RPC layer
- *
- * @param sock The struct of the socket that sent the RPC request
- * @param buf A pointer to the buffer where data can be read into
- * @param buf_index Current index into the buffer
- */
-static void get_rpc_request(struct pollfd* sock, char* buf) {
-    // log_msg(LOG_INFO, "Handling P2P request");
-
+int get_rpc_request(struct pollfd* sock, char* buf, size_t* out_size) {
     int sock_type = 0;
     socklen_t optlen = sizeof(sock_type);
     if (getsockopt(sock->fd, SOL_SOCKET, SO_TYPE, &sock_type, &optlen) < 0) {
         perror("getsockopt");
-        return;
+        return -1;
     }
 
     ssize_t received = 0;
@@ -64,7 +54,7 @@ static void get_rpc_request(struct pollfd* sock, char* buf) {
         received = recv_all(sock->fd, buf, sizeof(struct RPCMessageHeader));
         if (received < sizeof(struct RPCMessageHeader)) {
             log_msg(LOG_ERROR, "Failed to read RPC header");
-            return;
+            return -1;
         }
     }
     else if (sock_type == SOCK_DGRAM) {
@@ -75,12 +65,12 @@ static void get_rpc_request(struct pollfd* sock, char* buf) {
                             (struct sockaddr*)&from_addr, &from_len);
         if (received <= 0) {
             perror("recvfrom");
-            return;
+            return -1;
         }
     }
     else {
         log_msg(LOG_ERROR, "Unknown socket type");
-        return;
+        return -1;
     }
 
     // Interpret header
@@ -89,7 +79,7 @@ static void get_rpc_request(struct pollfd* sock, char* buf) {
 
     if (header->packet_size > MAX_RPC_PACKET_SIZE) {
         log_msg(LOG_ERROR, "Packet too large! Discarding.");
-        return;
+        return -1;
     }
 
     if (sock_type == SOCK_STREAM) {
@@ -98,19 +88,22 @@ static void get_rpc_request(struct pollfd* sock, char* buf) {
                             header->packet_size - sizeof(struct RPCMessageHeader));
         if (received < 0) {
             log_msg(LOG_ERROR, "Error reading full RPC request");
-            return;
+            return -1;
         }
     }
     else {
         // UDP: we already got the full packet in one recvfrom
         if (received != header->packet_size) {
             log_msg(LOG_WARN, "UDP packet size mismatch: got %zd, expected %u", received, header->packet_size);
-            return;
+            return -1;
         }
     }
 
+    *out_size = received;
+    return 0;
+
     // Pass packet to RPC layer
-    handle_rpc_request(sock, buf, header->packet_size);
+    // handle_rpc_request(sock, buf, header->packet_size);
 }
 
 /**
@@ -248,7 +241,11 @@ static void handle_incoming() {
 
     // Use get_rpc_request() to read the full packet into buf and process it
     struct pollfd udp_sock = sock_array[1];
-    get_rpc_request(&udp_sock, buf);
+
+    size_t packet_size = 0;
+    if (get_rpc_request(&udp_sock, buf, &packet_size) == 0) {
+        handle_rpc_request(&udp_sock, buf, packet_size);
+    }
 
     sock_array[1].revents = 0;
   }
@@ -289,8 +286,12 @@ static void handle_connected() {
       }
 
       // Dispatch depending on magic number
-      if (peeked == 4 && memcmp(peek_buf, RPC_MAGIC, 4) == 0)
-        get_rpc_request(&sock_array[i], buf);
+      if (peeked == 4 && memcmp(peek_buf, RPC_MAGIC, 4) == 0) {
+        size_t packet_size = 0;
+        if (get_rpc_request(&sock_array[i], buf, &packet_size) == 0) {
+            handle_rpc_request(&sock_array[i], buf, packet_size);
+        }
+      }
       else
         get_http_request(&sock_array[i], buf);
 
