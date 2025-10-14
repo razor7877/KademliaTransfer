@@ -64,7 +64,7 @@ static void handle_find_node(struct pollfd* sock, struct RPCFind* data) {
         .success = true,
         .found_key = false,
         .num_closest = 0,
-        .closest = {0}
+        .closest = {{{0}}}
     };
     
     int count = BUCKET_SIZE;
@@ -105,9 +105,9 @@ static void handle_find_value(struct pollfd* sock, struct RPCFind* data) {
         },
         .success = true,
         .found_key = false,
-        .values = {0},
+        .values = {{0}},
         .num_closest = 0,
-        .closest = {0}
+        .closest = {{{0}}}
     };
 
     const struct KeyValuePair* kvp = storage_get_value(data->key);
@@ -116,6 +116,8 @@ static void handle_find_value(struct pollfd* sock, struct RPCFind* data) {
         log_msg(LOG_DEBUG, "We had the key value pair, returning value from our storage to peer");
         response.found_key = true;
         serialize_rpc_value(kvp, &response.values);
+
+        send_all(sock->fd, &response, sizeof(response));
 
         return;
     }
@@ -169,6 +171,13 @@ void handle_rpc_request(struct pollfd* sock, char* contents, size_t length) {
 		case FIND_VALUE: expected_size = sizeof(struct RPCFind); break;
         case BROADCAST: expected_size = sizeof(struct RPCBroadcast); break;
 
+        case PING_RESPONSE:
+        case STORE_RESPONSE:
+        case FIND_NODE_RESPONSE:
+        case FIND_VALUE_RESPONSE:
+            log_msg(LOG_WARN, "Received a response packet without prior communication");
+            break;
+
 		default:
 			log_msg(LOG_ERROR, "Got invalid RPC request!");
             return;
@@ -187,6 +196,8 @@ void handle_rpc_request(struct pollfd* sock, char* contents, size_t length) {
 		case FIND_NODE: handle_find_node(sock, (struct RPCFind*)contents); break;
 		case FIND_VALUE: handle_find_value(sock, (struct RPCFind*)contents); break;
         case BROADCAST: handle_broadcast(sock, (struct RPCBroadcast*)contents); break;
+
+        default: break;
 	}
 }
 
@@ -206,6 +217,7 @@ int handle_rpc_upload(struct FileMagnet* file) {
     // Create peer with our info in the KeyValuePair
     create_own_peer(&kv.values[0]);
 
+    kv.values[0].peer_addr.sin_port = htons(SERVER_PORT);
     storage_put_value(&kv);
 
     int k = K_VALUE;
@@ -216,16 +228,16 @@ int handle_rpc_upload(struct FileMagnet* file) {
         return -1;
     }
 
-    struct RPCKeyValue serialized_kv;
+    struct RPCKeyValue serialized_kv = {0};
     serialize_rpc_value(&kv, &serialized_kv);
 
     struct RPCStore store_req = {
-            .header = {
-                .magic_number = RPC_MAGIC,
-                .packet_size = sizeof(struct RPCStore),
-                .call_type = STORE
-            }
-        };
+        .header = {
+            .magic_number = RPC_MAGIC,
+            .packet_size = sizeof(struct RPCStore),
+            .call_type = STORE
+        }
+    };
         
     memcpy(&store_req.key_value, &serialized_kv, sizeof(struct RPCKeyValue));
 
@@ -235,6 +247,7 @@ int handle_rpc_upload(struct FileMagnet* file) {
             continue;
         }
 
+        log_msg(LOG_DEBUG, "Peer addr is %p", closest[i]);
         log_msg(LOG_DEBUG, "Sending store to closest peer %d with port %d", i, ntohs(closest[i]->peer_addr.sin_port));
 
         int sock = connect_to_peer(&closest[i]->peer_addr);
@@ -267,7 +280,7 @@ int handle_rpc_download(struct FileMagnet* file) {
     if (local_kv) {
         log_msg(LOG_DEBUG, "Key found locally, downloading from local peers");
         for (int i = 0; i < local_kv->num_values; i++) {
-            if (download_http_file(&local_kv->values[i], file->file_hash))
+            if (download_http_file(&local_kv->values[i], file) == 0)
                 return 0;
         }
 
@@ -324,13 +337,32 @@ int handle_rpc_download(struct FileMagnet* file) {
             };
 
             memcpy(find_req.key, file->file_hash, sizeof(HashID));
+            log_msg(LOG_DEBUG, "Sending RPC FIND_VALUE");
             send_all(sock, &find_req, sizeof(find_req));
 
             char buf[MAX_RPC_PACKET_SIZE];
             size_t packet_size = 0;
 
+            char peek_buf[4] = {0};
+            ssize_t peeked = recv_all_peek(sock, peek_buf, sizeof(peek_buf));
+
+            if (peeked <= 0) {
+                if (peeked < 0)
+                    perror("recv_all_peek");
+
+                close(sock);
+                continue;
+            }
+
+            if (peeked != 4 || memcmp(peek_buf, RPC_MAGIC, 4) != 0) {
+                log_msg(LOG_ERROR, "Incorrect RPC_MAGIC in FIND_VALUE answer");
+                close(sock);
+                continue;
+            }
+
             // Send them the prepared FIND_VALUE RPC
             if (get_rpc_request(&pollfd_sock, buf, &packet_size) == 0) {
+                log_msg(LOG_DEBUG, "Got RPC FIND_VALUE response");
                 struct RPCMessageHeader* header = (struct RPCMessageHeader*)buf;
 
                 // Validate response type
@@ -339,10 +371,13 @@ int handle_rpc_download(struct FileMagnet* file) {
 
                     // They have the key, get it and contact the owners of the file
                     if (response->found_key) {
+                        log_msg(LOG_DEBUG, "Contacted peer knows the key");
+
                         struct KeyValuePair kvp;
                         deserialize_rpc_value(&response->values, &kvp);
                         for (int j = 0; j < kvp.num_values; j++) {
-                            if (download_http_file(&kvp.values[j], file->file_hash)) {
+                            log_msg(LOG_DEBUG, "Trying to download the file from peer %d in the KVP", j);
+                            if (download_http_file(&kvp.values[j], file) == 0) {
                                 value_found = true;
                                 break;
                             }

@@ -12,6 +12,9 @@
  * 
  */
 
+#define SERVER_PORT 8182
+#define BROADCAST_PORT 8183
+
 /**
  * @brief Gets the contents of the entire RPC request according to the request
  *

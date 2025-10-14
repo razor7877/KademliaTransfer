@@ -20,7 +20,7 @@ void cli_download_file() {
     if (fgets(magnet_link, sizeof(magnet_link), stdin) == NULL)
         return;
 
-    magnet_link[strcspn(magnet_link, "\n")] = '\00';
+    magnet_link[strcspn(magnet_link, "\n")] = '\0';
 
     // Load magnet file contents from disk
     FILE* file = fopen(magnet_link, "r");
@@ -68,7 +68,7 @@ void cli_upload_file() {
     if (fgets(filename, sizeof(filename), stdin) == NULL)
         return;
     
-    filename[strcspn(filename, "\n")] = '\00';
+    filename[strcspn(filename, "\n")] = '\0';
 
     FILE* file = fopen(filename, "r");
 

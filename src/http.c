@@ -3,6 +3,7 @@
 #include <ctype.h>
 #include <poll.h>
 #include <string.h>
+#include <errno.h>
 
 #include "log.h"
 #include "network.h"
@@ -101,7 +102,7 @@ static char* strcasestr_portable(const char* haystack, const char* needle) {
   return NULL;
 }
 
-int download_http_file(const struct Peer* peer, HashID file) {
+int download_http_file(const struct Peer* peer, struct FileMagnet* file) {
   if (!peer) {
     log_msg(LOG_ERROR, "Error in download_http_file peer is null!");
     return -1;
@@ -110,19 +111,22 @@ int download_http_file(const struct Peer* peer, HashID file) {
   char request[1024] = {0};
   char hash_buf[sizeof(HashID) * 2 + 1] = {0};
 
-  sha256_to_hex(file, hash_buf);
+  sha256_to_hex(file->file_hash, hash_buf);
   char ip_str[INET_ADDRSTRLEN] = {0};
   inet_ntop(AF_INET, &(peer->peer_addr.sin_addr), ip_str, INET_ADDRSTRLEN);
   int port = ntohs(peer->peer_addr.sin_port);
+
   // Build the GET request
   snprintf(request, 1024,
            "GET /%s HTTP/1.1\r\n"
            "Host: %s:%d\r\n"
            "Connection: close\r\n\r\n",
-           hash_buf, ip_str, port);
+           file->display_name, ip_str, port);
 
   int peer_fd = connect_to_peer(&peer->peer_addr);
-  if (peer_fd == -1) return -1;
+  if (peer_fd == -1)
+    return -1;
+
   char http_header[HTTP_HEADER_SIZE] = {0};
 
   int bytes_send = send_all(peer_fd, request, strlen(request));
@@ -131,36 +135,48 @@ int download_http_file(const struct Peer* peer, HashID file) {
     return -1;
   }
 
-  int header_bytes_read =
-      recv_until(peer_fd, http_header, sizeof(http_header), "\r\n\r\n", 4);
+  int header_bytes_read = recv_until(peer_fd, http_header, sizeof(http_header), "\r\n\r\n", 4);
   if (header_bytes_read <= 0) {
     log_msg(LOG_ERROR, "Error in download http_file response is empty");
     return -1;
   }
+
+  if (strstr(http_header, "404 Not Found") != NULL) {
+    log_msg(LOG_WARN, "Peer responded with 404 Not Found for file %s", file->display_name);
+    close(peer_fd);
+    return -1;
+  }
+
   http_header[header_bytes_read] = '\0';
-  char* content_length_buf =
-      strcasestr_portable(http_header, "Content-Length:");
+  char* content_length_buf = strcasestr_portable(http_header, "Content-Length:");
   size_t content_length = 0;
   if (!content_length_buf) {
     log_msg(LOG_ERROR, "Error in download_http_file content_length not found");
     return -1;
   }
+
   sscanf(content_length_buf, "Content-Length: %zu", &content_length);
-  FILE* new_file = fopen(hash_buf, "rb");
+
+  log_msg(LOG_DEBUG, "Downloading HTTP file with size %zu", content_length);
+
+  FILE* new_file = fopen(file->display_name, "wb");
   if (!new_file) {
-    log_msg(LOG_ERROR, "Error in download_http_file cannot create the file!");
+    log_msg(LOG_ERROR, "Error in download_http_file cannot create the file!: %s", strerror(errno));
     return -1;
   }
-  int bytes_read = 0;
-  char* file_chunk[CHUNK_SIZE] = {0};
 
-  while (bytes_read < content_length) {
-    size_t received = recv_all(peer_fd, file_chunk, CHUNK_SIZE);
+  int to_read = content_length;
+  char file_chunk[CHUNK_SIZE] = {0};
+
+  while (to_read > 0) {
+    size_t received = recv_all(peer_fd, file_chunk, min(CHUNK_SIZE, to_read));
     if (received <= 0) break;
     fwrite(file_chunk, 1, received, new_file);
-    bytes_read += received;
+    to_read -= received;
   }
+
   fclose(new_file);
   close(peer_fd);
+
   return 0;
 }

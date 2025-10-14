@@ -91,49 +91,59 @@ void stop_client() {
 }
 
 int download_file(struct FileMagnet* file) {
-    struct Command c;
-    if (!command_init(&c))
+    struct Command* c = malloc(sizeof(struct Command));
+    pointer_not_null(c, "download_file command malloc error");
+
+    if (!command_init(c)) {
+        free(c);
         return -1;
+    }
 
-    c.cmd_type = CMD_DOWNLOAD;
-    c.file = file;
+    c->cmd_type = CMD_DOWNLOAD;
+    c->file = file;
 
-    queue_push(&commands, &c);
+    queue_push(&commands, c);
 
     // Acquire the lock
-    pthread_mutex_lock(&c.lock);
+    pthread_mutex_lock(&c->lock);
     // Condition variable to wait for command result from network thread
-    while (!c.done) {
-        pthread_cond_wait(&c.cond, &c.lock);
+    while (!c->done) {
+        pthread_cond_wait(&c->cond, &c->lock);
     }
-    pthread_mutex_unlock(&c.lock);
+    pthread_mutex_unlock(&c->lock);
 
-    int result = c.result;
-    command_destroy(&c);
+    int result = c->result;
+    command_destroy(c);
+    free(c);
 
     return result;
 }
 
 int upload_file(struct FileMagnet* file) {
-    struct Command c;
-    if (!command_init(&c))
+    struct Command* c = malloc(sizeof(struct Command));
+    pointer_not_null(c, "upload_file command malloc error");
+
+    if (!command_init(c)) {
+        free(c);
         return -1;
+    }
 
-    c.cmd_type = CMD_UPLOAD;
-    c.file = file;
+    c->cmd_type = CMD_UPLOAD;
+    c->file = file;
 
-    queue_push(&commands, &c);
+    queue_push(&commands, c);
 
     // Acquire the lock
-    pthread_mutex_lock(&c.lock);
+    pthread_mutex_lock(&c->lock);
     // Condition variable to wait for command result from network thread
-    while (!c.done) {
-        pthread_cond_wait(&c.cond, &c.lock);
+    while (!c->done) {
+        pthread_cond_wait(&c->cond, &c->lock);
     }
-    pthread_mutex_unlock(&c.lock);
+    pthread_mutex_unlock(&c->lock);
 
-    int result = c.result;
-    command_destroy(&c);
+    int result = c->result;
+    command_destroy(c);
+    free(c);
 
     return result;
 }
@@ -141,24 +151,29 @@ int upload_file(struct FileMagnet* file) {
 int show_network_status() {
     log_msg(LOG_INFO, "Showing network status");
 
-    struct Command c;
-    if (!command_init(&c))
-        return -1;
-    
-    c.cmd_type = CMD_SHOW_STATUS;
+    struct Command* c = malloc(sizeof(struct Command));
+    pointer_not_null(c, "show_network_status command malloc error");
 
-    queue_push(&commands, &c);
+    if (!command_init(c)) {
+        free(c);
+        return -1;
+    }
+    
+    c->cmd_type = CMD_SHOW_STATUS;
+
+    queue_push(&commands, c);
 
     // Acquire the lock
-    pthread_mutex_lock(&c.lock);
+    pthread_mutex_lock(&c->lock);
     // Condition variable to wait for command result from network thread
-    while (!c.done) {
-        pthread_cond_wait(&c.cond, &c.lock);
+    while (!c->done) {
+        pthread_cond_wait(&c->cond, &c->lock);
     }
-    pthread_mutex_unlock(&c.lock);
+    pthread_mutex_unlock(&c->lock);
 
-    int result = c.result;
-    command_destroy(&c);
+    int result = c->result;
+    command_destroy(c);
+    free(c);
 
     return result;
 }

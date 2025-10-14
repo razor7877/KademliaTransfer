@@ -25,8 +25,6 @@
 
 #define MAX_WAIT_CON 5
 #define MAX_SOCK 128
-#define SERVER_PORT 8182
-#define BROADCAST_PORT 8183
 
 static const char http_pattern[] = "\r\n\r\n";
 
@@ -47,7 +45,7 @@ int get_rpc_request(struct pollfd* sock, char* buf, size_t* out_size) {
         return -1;
     }
 
-  ssize_t received = 0;
+    ssize_t received = 0;
 
     if (sock_type == SOCK_STREAM) {
         // TCP: read header first
@@ -73,9 +71,9 @@ int get_rpc_request(struct pollfd* sock, char* buf, size_t* out_size) {
         return -1;
     }
 
-  // Interpret header
-  struct RPCMessageHeader* header = (struct RPCMessageHeader*)buf;
-  // log_msg(LOG_INFO, "Packet size is: %d", header->packet_size);
+    // Interpret header
+    struct RPCMessageHeader* header = (struct RPCMessageHeader*)buf;
+    // log_msg(LOG_INFO, "Packet size is: %d", header->packet_size);
 
     if (header->packet_size > MAX_RPC_PACKET_SIZE) {
         log_msg(LOG_ERROR, "Packet too large! Discarding.");
@@ -87,7 +85,7 @@ int get_rpc_request(struct pollfd* sock, char* buf, size_t* out_size) {
         received = recv_all(sock->fd, buf + sizeof(struct RPCMessageHeader),
                             header->packet_size - sizeof(struct RPCMessageHeader));
         if (received < 0) {
-            log_msg(LOG_ERROR, "Error reading full RPC request");
+            log_msg(LOG_ERROR, "Error reading full RPC request: %s", strerror(errno));
             return -1;
         }
     }
@@ -101,9 +99,6 @@ int get_rpc_request(struct pollfd* sock, char* buf, size_t* out_size) {
 
     *out_size = received;
     return 0;
-
-    // Pass packet to RPC layer
-    // handle_rpc_request(sock, buf, header->packet_size);
 }
 
 /**
@@ -272,8 +267,7 @@ static void handle_connected() {
     // Handle message from connection
     if (sock_array[i].revents & POLLIN) {
       char peek_buf[4] = {0};
-      ssize_t peeked =
-          recv_all_peek(sock_array[i].fd, peek_buf, sizeof(peek_buf));
+      ssize_t peeked = recv_all_peek(sock_array[i].fd, peek_buf, sizeof(peek_buf));
 
       if (peeked <= 0) {
         if (peeked < 0)
