@@ -163,55 +163,68 @@ int main(int argc, char** argv) {
         exit(EXIT_FAILURE);
     }
 
-    log_msg(LOG_INFO, "sizeof(RPCPeer) is %d", sizeof(struct RPCPeer));
+    bool disable_cli = false;
+    char* env = getenv("DISABLE_CLI");
+    if (env && strcmp(env, "1") == 0) {
+        disable_cli = true;
+    }
     
-    bool running = true;
-    char input[INPUT_SIZE] = {0};
-    int choice = -1;
+    if (!disable_cli) {
+        bool running = true;
+        char input[INPUT_SIZE] = {0};
+        int choice = -1;
 
-    while (running) {
-        printf("\n===== KademliaTransfer Menu =====\n");
-        printf("1. Show network status\n");
-        printf("2. Upload file\n");
-        printf("3. Download file\n");
-        printf("4. Exit\n");
-        printf("Enter your choice: ");
+        while (running) {
+            printf("\n===== KademliaTransfer Menu =====\n");
+            printf("1. Show network status\n");
+            printf("2. Upload file\n");
+            printf("3. Download file\n");
+            printf("4. Exit\n");
+            printf("Enter your choice: ");
 
-        if (fgets(input, sizeof(input), stdin) == NULL) {
-            log_msg(LOG_WARN, "\nError reading input\n");
-            continue;
+            if (fgets(input, sizeof(input), stdin) == NULL) {
+                log_msg(LOG_WARN, "\nError reading input\n");
+                continue;
+            }
+
+            printf("\n");
+            
+            input[strcspn(input, "\n")] = '\00';
+
+            if (sscanf(input, "%d", &choice) != 1) {
+                log_msg(LOG_WARN, "Invalid input! Please enter a number.\n");
+                continue;
+            }
+
+            switch (choice) {
+                case 1:
+                    cli_show_network_status();
+                    break;
+
+                case 2:
+                    cli_upload_file();
+                    break;
+
+                case 3:
+                    cli_download_file();
+                    break;
+
+                case 4:
+                    log_msg(LOG_INFO, "Exiting program...\n");
+                    running = false;
+                    break;
+
+                default:
+                    log_msg(LOG_WARN, "Invalid choice! Please select 1-4.\n");
+                    break;
+            }
         }
-
-        printf("\n");
-        
-        input[strcspn(input, "\n")] = '\00';
-
-        if (sscanf(input, "%d", &choice) != 1) {
-            log_msg(LOG_WARN, "Invalid input! Please enter a number.\n");
-            continue;
-        }
-
-        switch (choice) {
-            case 1:
-                cli_show_network_status();
-                break;
-
-            case 2:
-                cli_upload_file();
-                break;
-
-            case 3:
-                cli_download_file();
-                break;
-
-            case 4:
-                log_msg(LOG_INFO, "Exiting program...\n");
-                running = false;
-                break;
-
-            default:
-                log_msg(LOG_WARN, "Invalid choice! Please select 1-4.\n");
-                break;
+    }
+    else {
+        log_msg(LOG_INFO, "CLI disabled, running headless mode...\n");
+        while (1) {
+            // Might want to implement something better for graceful exits
+            sleep(60);
         }
     }
 
