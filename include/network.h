@@ -29,4 +29,10 @@ void update_network();
  */
 void stop_network();
 
+/**
+ * @brief Connects to a peer
+ * 
+ * @param addr The peer to connect to
+ * @return int The socket fd if connection was successful, a negative number otherwise
+ */
 int connect_to_peer(const struct sockaddr_in* addr);

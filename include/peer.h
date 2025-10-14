@@ -6,7 +6,8 @@
 #include <openssl/evp.h>
 
 #include "shared.h"
-#include "rpc.h"
+
+struct RPCPeer;
 
 /**
  * @file peer.h
@@ -49,14 +50,16 @@ struct Peer {
  * @brief Serializes a struct Peer to a struct RPCPeer
  * 
  * @param peer The peer to serialize
- * @return struct RPCPeer* Returns a heap-allocated struct RPCPeer* that should be freed by the caller
+ * @param serialized A pointer to store the serialized peer
+ * @return int 0 if the peer was serialized correctly, a negative number otherwise
  */
-struct RPCPeer* serialize_rpc_peer(const struct Peer* peer);
+int serialize_rpc_peer(const struct Peer* peer, struct RPCPeer* serialized);
 
 /**
  * @brief Deserializes a struct RPCPeer to a struct Peer
  * 
  * @param peer The peer to deserialize
- * @return struct Peer* Returns a heap-allocated struct Peer* that should be freed by the caller
+ * @param deserialized A pointer to memory that will store the deserialized peer
+ * @return int 0 if the peer was deserialized correctly, a negative number otherwise
  */
-struct Peer* deserialize_rpc_peer(const struct RPCPeer* peer);
+int deserialize_rpc_peer(const struct RPCPeer* peer, struct Peer* deserialized);

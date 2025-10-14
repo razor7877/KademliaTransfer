@@ -221,8 +221,7 @@ int get_primary_ip(char* ip_buf, size_t buf_size, struct sockaddr_in* out_addr) 
 
     // Cache to avoid doing long network queries everytime we need our primary IP
     if (cached) {
-        if (ip_buf)
-            strncpy(ip_buf, cached_ip, buf_size - 1);
+        strncpy(ip_buf, cached_ip, buf_size - 1);
         if (out_addr)
             memcpy(out_addr, &cached_addr, sizeof(struct sockaddr_in));
         return 0;
@@ -264,7 +263,7 @@ int get_primary_ip(char* ip_buf, size_t buf_size, struct sockaddr_in* out_addr) 
     if (!result)
         return -1;
 
-    strncpy(cached_ip, ip_buf, sizeof(cached_ip) - 1);
+    strncpy(cached_ip, ip_buf, buf_size - 1);
     cached_addr = name;
     cached = true;
     

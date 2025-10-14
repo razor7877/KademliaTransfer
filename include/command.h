@@ -56,7 +56,37 @@ struct CommandQueue {
     pthread_mutex_t lock;
 };
 
+/**
+ * @brief Initializes the command queue
+ * 
+ * @param q The command queue to be initialized
+ * @return int Returns 0 if the initialization was successful, less than 0 otherwise
+ */
 int queue_init(struct CommandQueue* q);
+
+/**
+ * @brief Pushes a new command to the queue
+ * 
+ * @param q The queue to push the command in
+ * @param cmd The command to be pushed to the queue
+ * @return true The command was successfully pushed to the queue
+ * @return false The command was not successfully pushed to the queue (full queue)
+ */
 bool queue_push(struct CommandQueue* q, const struct Command* cmd);
+
+/**
+ * @brief Pops a command from the queue if there is at least one 
+ * 
+ * @param q The queue to pop a command from
+ * @param out_cmd A pointer to memory that will store data from the popped command (if pop was successful)
+ * @return true The command was successfully popped from the queue
+ * @return false The command was not successfully popped from the queue (empty queue)
+ */
 bool queue_pop(struct CommandQueue* q, struct Command* out_cmd);
+
+/**
+ * @brief Cleans up the state associated with a queue
+ * 
+ * @param q The queue to destroy
+ */
 void queue_destroy(struct CommandQueue* q);

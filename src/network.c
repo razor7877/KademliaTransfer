@@ -157,16 +157,15 @@ static void broadcast_discovery_request(void) {
   };
 
   struct Peer peer;
-  create_own_peer(&peer);
+  if (create_own_peer(&peer) != 0) {
+    log_msg(LOG_ERROR, "broadcast_discovery_request");
+    return;
+  }
 
   peer.peer_addr.sin_port = htons(SERVER_PORT);
 
-  struct RPCPeer* serialized_peer = serialize_rpc_peer(&peer);
-  request.peer = *serialized_peer;
-  
-  // log_msg(LOG_WARN, "Sending broadcast with addr with port %d", ntohs(peer.peer_addr.sin_port));
-
-  free(serialized_peer);
+  // Store the serialized peer in our request data
+  serialize_rpc_peer(&peer, &request.peer);
 
   // Broadcast a RPC ping packet to everyone with our info
   ssize_t sent = sendto(sock_array[1].fd, &request, sizeof(request), 0, (struct sockaddr*)&server_addr, sizeof(server_addr));
@@ -466,5 +465,6 @@ int connect_to_peer(const struct sockaddr_in* addr) {
     }
 
     log_msg(LOG_DEBUG, "Connected successfully to %s:%d", ip_str, ntohs(addr->sin_port));
+    
     return sock;
 }

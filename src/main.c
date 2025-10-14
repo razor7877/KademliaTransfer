@@ -7,6 +7,7 @@
 #include "client.h"
 #include "log.h"
 #include "peer.h"
+#include "rpc.h"
 
 #define INPUT_SIZE 256
 #define FILENAME_SIZE 512

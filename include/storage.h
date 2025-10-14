@@ -38,5 +38,20 @@ const struct KeyValuePair* storage_get_value(HashID key);
  */
 void storage_put_value(struct KeyValuePair* value);
 
-struct RPCKeyValue* serialize_rpc_value(const struct KeyValuePair* value);
-struct KeyValuePair* deserialize_rpc_value(const struct RPCKeyValue* value);
+/**
+ * @brief Serializes a KeyValuePair to a RPCKeyValue
+ * 
+ * @param value The value to be serialized
+ * @param serialized A pointer to memory where the serialized contents should be stored
+ * @return int Returns 0 if the value was serialized successfully, a negative number otherwise
+ */
+int serialize_rpc_value(const struct KeyValuePair* value, struct RPCKeyValue* serialized);
+
+/**
+ * @brief Deserializes a RPCKeyValue to a KeyValuePair
+ * 
+ * @param value The value to be deserialized
+ * @param deserialized A pointer to memory where the deserialized contents should be stored
+ * @return int Returns 0 if the value was deserialized successfully, a negative number otherwise
+ */
+int deserialize_rpc_value(const struct RPCKeyValue* value, struct KeyValuePair* deserialized);

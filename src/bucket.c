@@ -65,8 +65,7 @@ struct Peer** find_closest_peers(Buckets buckets, HashID target, int n) {
   log_msg(LOG_DEBUG, "Bucket index for this distance is %d", bucket_index);
 
   // First get nodes from the bucket with nodes closest to the target
-  count +=
-      find_nearest(&buckets[bucket_index], target, result + count, n - count);
+  count += find_nearest(&buckets[bucket_index], target, result + count, n - count);
 
   // Extend our range to neighboring buckets until we searched everything or
   // found the number of requested peers

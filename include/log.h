@@ -28,5 +28,18 @@ enum LogColor {
     LOG_COLOR_WHITE
 };
 
+/**
+ * @brief Changes the log timestamp color for the calling thread only
+ * 
+ * @param color The new color to use
+ */
 void log_set_thread_color(enum LogColor color);
+
+/**
+ * @brief Logs a new message
+ * 
+ * @param level The log message level
+ * @param fmt The log format (printf formatting)
+ * @param ... Arguments for the format string
+ */
 void log_msg(enum LogLevel level, const char* fmt, ...);

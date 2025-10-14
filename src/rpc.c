@@ -34,9 +34,9 @@ static void handle_ping(struct pollfd* sock, struct RPCPing* data) {
 static void handle_store(struct pollfd* sock, struct RPCStore* data) {
     log_msg(LOG_DEBUG, "Handling RPC store");
 
-    struct KeyValuePair* kvp = deserialize_rpc_value(&data->key_value);
-    storage_put_value(kvp);
-    free(kvp);
+    struct KeyValuePair kvp;
+    deserialize_rpc_value(&data->key_value, &kvp);
+    storage_put_value(&kvp);
 
     struct RPCResponse response = {
         .header = {
@@ -65,7 +65,8 @@ static void handle_find_node(struct pollfd* sock, struct RPCFind* data) {
         .closest = {0}
     };
     
-    struct Peer** closest = find_closest_peers(buckets, data->key, 1);
+    int count = BUCKET_SIZE;
+    struct Peer** closest = find_closest_peers(buckets, data->key, count);
 
     if (closest == NULL) {
         log_msg(LOG_ERROR, "handle_find_node find_closest_peers returned NULL");
@@ -81,20 +82,18 @@ static void handle_find_node(struct pollfd* sock, struct RPCFind* data) {
 
 static void handle_find_value(struct pollfd* sock, struct RPCFind* data) {
     log_msg(LOG_DEBUG, "Handling RPC find value");
+
 }
 
 static void handle_broadcast(struct pollfd* sock, struct RPCBroadcast* data) {
-    struct Peer* peer = deserialize_rpc_peer(&data->peer);
-
-    // log_msg(LOG_DEBUG, "Handling RPC broadcast packet");
-    update_bucket_peers(buckets, peer);
-
-    free(peer);
+    struct Peer peer;
+    // Get the peer object back
+    deserialize_rpc_peer(&data->peer, &peer);
+    // Update our buckets with the information from this (potentially new) peer
+    update_bucket_peers(buckets, &peer);
 }
 
 void handle_rpc_request(struct pollfd* sock, char* contents, size_t length) {
-    // log_msg(LOG_DEBUG, "Handling RPC request in RPC layer");
-
     size_t expected_size = 0;
 
     struct RPCMessageHeader* header = (struct RPCMessageHeader*)contents;
@@ -156,8 +155,9 @@ void handle_rpc_upload(struct FileMagnet* file) {
         return;
     }
 
-    struct RPCKeyValue* serialized_kv = serialize_rpc_value(&kv);
-    
+    struct RPCKeyValue serialized_kv;
+    serialize_rpc_value(&kv, &serialized_kv);
+
     struct RPCStore store_req = {
             .header = {
                 .magic_number = RPC_MAGIC,
@@ -166,7 +166,7 @@ void handle_rpc_upload(struct FileMagnet* file) {
             }
         };
         
-    memcpy(&store_req.key_value, serialized_kv, sizeof(struct RPCKeyValue));
+    memcpy(&store_req.key_value, &serialized_kv, sizeof(struct RPCKeyValue));
 
     for (int i = 0; i < k; i++) {
         if (closest[i] == NULL) {
@@ -187,7 +187,6 @@ void handle_rpc_upload(struct FileMagnet* file) {
     }
 
     log_msg(LOG_DEBUG, "handle_rpc_upload finished propagating file key to peers");
-    free(serialized_kv);
 }
 
 void handle_rpc_download(struct FileMagnet* file) {

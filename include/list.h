@@ -2,7 +2,6 @@
 
 #include "shared.h"
 
-#pragma once
 
 /**
  * @file list.h
@@ -112,9 +111,7 @@ void dist_hash(HashID result, const HashID id1, const HashID id2);
  * @param max_neighbors 
  * @return int 
  */
-int find_nearest(const struct DList* list, const HashID id,
-                           struct Peer** out_peers,
-                           size_t max_neighbors);
+int find_nearest(const struct DList* list, const HashID id, struct Peer** out_peers, size_t max_neighbors);
 
 /**
  * @brief Checks if a peer with a given ID exists in the list
