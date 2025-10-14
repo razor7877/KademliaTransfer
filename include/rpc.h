@@ -120,11 +120,11 @@ void handle_rpc_request(struct pollfd* sock, char* contents, size_t length);
  * 
  * @param file The metadata about the file to upload
  */
-void handle_rpc_upload(struct FileMagnet* file);
+int handle_rpc_upload(struct FileMagnet* file);
 
 /**
  * @brief Handles downloading a file from the P2P network
  * 
  * @param file The metadata about the file to upload
  */
-void handle_rpc_download(struct FileMagnet* file);
+int handle_rpc_download(struct FileMagnet* file);

@@ -101,15 +101,12 @@ static char* strcasestr_portable(const char* haystack, const char* needle) {
   return NULL;
 }
 
-<<<<<<< HEAD
 int download_http_file(const struct Peer* peer, HashID file) {
-=======
-int download_http_file(struct Peer* peer, HashID file) {
   if (!peer) {
     log_msg(LOG_ERROR, "Error in download_http_file peer is null!");
->>>>>>> f219e8276a4049a426149c28799f3841aa885279
     return -1;
   }
+  
   char request[1024] = {0};
   char hash_buf[sizeof(HashID) * 2 + 1] = {0};
 

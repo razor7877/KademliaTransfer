@@ -135,19 +135,18 @@ static void get_http_request(struct pollfd* sock, char* buf) {
  */
 static void broadcast_discovery_request(void) {
   struct sockaddr_in server_addr = {0};
-  socklen_t size = sizeof(server_addr);
+
   server_addr.sin_family = AF_INET;
   server_addr.sin_port = htons(BROADCAST_PORT);
   server_addr.sin_addr.s_addr = htonl(INADDR_BROADCAST);
 
   struct RPCBroadcast request = {
-      .header =
-          {
-              .magic_number = RPC_MAGIC,
-              .packet_size = sizeof(struct RPCBroadcast),
-              .call_type = BROADCAST,
-          },
-      .peer = {0}};
+    .header = {
+      .magic_number = RPC_MAGIC,
+      .packet_size = sizeof(struct RPCBroadcast),
+      .call_type = BROADCAST,
+    }
+  };
 
   struct Peer peer;
   if (create_own_peer(&peer) != 0) {
@@ -305,7 +304,7 @@ static void handle_connected() {
 }
 
 static void handle_pending() {
-  struct Command cmd = {0};
+  struct Command* cmd;
 
   bool had_commands = commands.count > 0;
 
@@ -314,35 +313,40 @@ static void handle_pending() {
 
     log_msg(LOG_DEBUG, "Handling command from P2P client");
 
-    switch (cmd.cmd_type) {
+    switch (cmd->cmd_type) {
       case CMD_SHOW_STATUS:
         log_msg(LOG_DEBUG, "Show status");
+        cmd->result = true;
         break;
 
       case CMD_UPLOAD:
-        if (cmd.file == NULL) {
+        if (cmd->file == NULL) {
           log_msg(LOG_WARN, "Got upload command with empty file");
           continue;
         }
-
-        handle_rpc_upload(cmd.file);
-
+        cmd->result = handle_rpc_upload(cmd->file);
         break;
 
       case CMD_DOWNLOAD:
-        if (cmd.file == NULL) {
+        if (cmd->file == NULL) {
           log_msg(LOG_WARN, "Got download command with empty file");
           continue;
         }
 
-        handle_rpc_download(cmd.file);
-
+        cmd->result = handle_rpc_download(cmd->file);
         break;
 
       default:
         log_msg(LOG_DEBUG, "Unknown command");
+        cmd->result = -1;
         break;
     }
+
+    // Set state and signal to caller thread that we handled the command
+    pthread_mutex_lock(&cmd->lock);
+    cmd->done = true;
+    pthread_cond_signal(&cmd->cond);
+    pthread_mutex_unlock(&cmd->lock);
   }
 
   if (had_commands) log_msg(LOG_DEBUG, "Finished handling commands");

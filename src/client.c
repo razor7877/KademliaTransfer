@@ -64,6 +64,8 @@ void* init_client(void* arg) {
     init_network();
 
     update_client();
+
+    return NULL;
 }
 
 void update_client() {
@@ -89,34 +91,74 @@ void stop_client() {
 }
 
 int download_file(struct FileMagnet* file) {
-    struct Command c = {
-        .cmd_type = CMD_DOWNLOAD,
-        .file = file
-    };
+    struct Command c;
+    if (!command_init(&c))
+        return -1;
+
+    c.cmd_type = CMD_DOWNLOAD;
+    c.file = file;
 
     queue_push(&commands, &c);
 
-    return 0;
+    // Acquire the lock
+    pthread_mutex_lock(&c.lock);
+    // Condition variable to wait for command result from network thread
+    while (!c.done) {
+        pthread_cond_wait(&c.cond, &c.lock);
+    }
+    pthread_mutex_unlock(&c.lock);
+
+    int result = c.result;
+    command_destroy(&c);
+
+    return result;
 }
 
 int upload_file(struct FileMagnet* file) {
-    struct Command c = {
-        .cmd_type = CMD_UPLOAD,
-        .file = file
-    };
+    struct Command c;
+    if (!command_init(&c))
+        return -1;
+
+    c.cmd_type = CMD_UPLOAD;
+    c.file = file;
 
     queue_push(&commands, &c);
 
-    return 0;
+    // Acquire the lock
+    pthread_mutex_lock(&c.lock);
+    // Condition variable to wait for command result from network thread
+    while (!c.done) {
+        pthread_cond_wait(&c.cond, &c.lock);
+    }
+    pthread_mutex_unlock(&c.lock);
+
+    int result = c.result;
+    command_destroy(&c);
+
+    return result;
 }
 
-void show_network_status() {
+int show_network_status() {
     log_msg(LOG_INFO, "Showing network status");
 
-    struct Command c = {
-        .cmd_type = CMD_SHOW_STATUS,
-        .file = NULL
-    };
+    struct Command c;
+    if (!command_init(&c))
+        return -1;
+    
+    c.cmd_type = CMD_SHOW_STATUS;
 
     queue_push(&commands, &c);
+
+    // Acquire the lock
+    pthread_mutex_lock(&c.lock);
+    // Condition variable to wait for command result from network thread
+    while (!c.done) {
+        pthread_cond_wait(&c.cond, &c.lock);
+    }
+    pthread_mutex_unlock(&c.lock);
+
+    int result = c.result;
+    command_destroy(&c);
+
+    return result;
 }

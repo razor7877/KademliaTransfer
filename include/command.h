@@ -13,6 +13,8 @@
  * 
  */
 
+#define MAX_COMMANDS_PENDING 10
+
 /**
  * @brief Describes the different commands that can be issued to the P2P client
  * 
@@ -40,21 +42,46 @@ struct Command {
      * 
      */
     struct FileMagnet* file;
-};
 
-#define MAX_COMMANDS_PENDING 10
+    /**
+     * @brief Lock for acquiring the Command object
+     * 
+     */
+    pthread_mutex_t lock;
+
+    /**
+     * @brief Condition variable for the caller thread to wait for result
+     * 
+     */
+    pthread_cond_t cond;
+
+    /**
+     * @brief Whether the command was executed
+     * 
+     */
+    bool done;
+
+    /**
+     * @brief The result of the command
+     * 
+     */
+    int result;
+};
 
 /**
  * @brief A queue of commands issued to the P2P client
  * 
  */
 struct CommandQueue {
-    struct Command items[MAX_COMMANDS_PENDING];
+    struct Command* items[MAX_COMMANDS_PENDING];
     int head;
     int tail;
     int count;
     pthread_mutex_t lock;
 };
+
+bool command_init(struct Command* cmd);
+void command_destroy(struct Command* cmd);
 
 /**
  * @brief Initializes the command queue
@@ -72,7 +99,7 @@ int queue_init(struct CommandQueue* q);
  * @return true The command was successfully pushed to the queue
  * @return false The command was not successfully pushed to the queue (full queue)
  */
-bool queue_push(struct CommandQueue* q, const struct Command* cmd);
+bool queue_push(struct CommandQueue* q, struct Command* cmd);
 
 /**
  * @brief Pops a command from the queue if there is at least one 
@@ -82,7 +109,7 @@ bool queue_push(struct CommandQueue* q, const struct Command* cmd);
  * @return true The command was successfully popped from the queue
  * @return false The command was not successfully popped from the queue (empty queue)
  */
-bool queue_pop(struct CommandQueue* q, struct Command* out_cmd);
+bool queue_pop(struct CommandQueue* q, struct Command** out_cmd);
 
 /**
  * @brief Cleans up the state associated with a queue

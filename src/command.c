@@ -1,4 +1,35 @@
+#include <string.h>
+#include <stdio.h>
+
 #include "command.h"
+
+bool command_init(struct Command* cmd) {
+    if (!cmd) return false;
+
+    memset(cmd, 0, sizeof(*cmd));
+    if (pthread_mutex_init(&cmd->lock, NULL) != 0) {
+        perror("pthread_mutex_init");
+        return false;
+    }
+
+    if (pthread_cond_init(&cmd->cond, NULL) != 0) {
+        perror("pthread_cond_init");
+        pthread_mutex_destroy(&cmd->lock);
+        return false;
+    }
+
+    cmd->done = false;
+    cmd->result = 0;
+
+    return true;
+}
+
+void command_destroy(struct Command* cmd) {
+    if (!cmd) return;
+
+    pthread_mutex_destroy(&cmd->lock);
+    pthread_cond_destroy(&cmd->cond);
+}
 
 int queue_init(struct CommandQueue* q) {
     if (!q) return -1;
@@ -10,7 +41,7 @@ int queue_init(struct CommandQueue* q) {
     return pthread_mutex_init(&q->lock, NULL);
 }
 
-bool queue_push(struct CommandQueue* q, const struct Command* cmd) {
+bool queue_push(struct CommandQueue* q, struct Command* cmd) {
     if (!q || !cmd) return false;
 
     pthread_mutex_lock(&q->lock);
@@ -20,7 +51,7 @@ bool queue_push(struct CommandQueue* q, const struct Command* cmd) {
         return false;
     }
 
-    q->items[q->tail] = *cmd;
+    q->items[q->tail] = cmd;
     q->tail = (q->tail + 1) % MAX_COMMANDS_PENDING;
     q->count++;
 
@@ -29,7 +60,7 @@ bool queue_push(struct CommandQueue* q, const struct Command* cmd) {
     return true;
 }
 
-bool queue_pop(struct CommandQueue* q, struct Command* out_cmd) {
+bool queue_pop(struct CommandQueue* q, struct Command** out_cmd) {
     if (!q || !out_cmd) return false;
 
     pthread_mutex_lock(&q->lock);

@@ -56,4 +56,4 @@ int upload_file(struct FileMagnet* file);
  * @brief Prints out the current network status to the TTY
  * 
  */
-void show_network_status();
+int show_network_status();

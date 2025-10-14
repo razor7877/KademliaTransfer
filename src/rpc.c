@@ -190,12 +190,12 @@ void handle_rpc_request(struct pollfd* sock, char* contents, size_t length) {
 	}
 }
 
-void handle_rpc_upload(struct FileMagnet* file) {
+int handle_rpc_upload(struct FileMagnet* file) {
     log_msg(LOG_DEBUG, "Start handling RPC upload");
 
     if (!file) {
         log_msg(LOG_ERROR, "handle_rpc_upload got NULL file");
-        return;
+        return -1;
     }
 
     struct KeyValuePair kv = {
@@ -213,7 +213,7 @@ void handle_rpc_upload(struct FileMagnet* file) {
 
     if (!closest) {
         log_msg(LOG_WARN, "handle_rpc_upload: no peers available for STORE propagation");
-        return;
+        return -1;
     }
 
     struct RPCKeyValue serialized_kv;
@@ -235,7 +235,7 @@ void handle_rpc_upload(struct FileMagnet* file) {
             continue;
         }
 
-        log_msg(LOG_DEBUG, "Sending store to closest peer %d", i);
+        log_msg(LOG_DEBUG, "Sending store to closest peer %d with port %d", i, ntohs(closest[i]->peer_addr.sin_port));
 
         int sock = connect_to_peer(&closest[i]->peer_addr);
         if (sock < 0) {
@@ -248,14 +248,18 @@ void handle_rpc_upload(struct FileMagnet* file) {
     }
 
     log_msg(LOG_DEBUG, "handle_rpc_upload finished propagating file key to peers");
+
+    free(closest);
+
+    return 0;
 }
 
-void handle_rpc_download(struct FileMagnet* file) {
+int handle_rpc_download(struct FileMagnet* file) {
     log_msg(LOG_DEBUG, "Start handling RPC download");
 
     if (!file) {
         log_msg(LOG_ERROR, "handle_rpc_download got NULL file");
-        return;
+        return -1;
     }
 
     // First check local storage for the key-value pair
@@ -264,11 +268,11 @@ void handle_rpc_download(struct FileMagnet* file) {
         log_msg(LOG_DEBUG, "Key found locally, downloading from local peers");
         for (int i = 0; i < local_kv->num_values; i++) {
             if (download_http_file(&local_kv->values[i], file->file_hash))
-                return;
+                return 0;
         }
 
         log_msg(LOG_WARN, "All known peers failed to serve the file");
-        return;
+        return -1;
     }
 
     // Vector to store the current closest nodes we're contacting
@@ -386,4 +390,9 @@ void handle_rpc_download(struct FileMagnet* file) {
     // Cleanup
     vector_free(&closest, true);
     vector_free(&contacted, true);
+
+    if (value_found)
+        return 0;
+
+    return -1;
 }

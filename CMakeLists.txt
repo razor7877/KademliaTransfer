@@ -27,6 +27,8 @@ add_executable(KademliaClient
     lib/hash/hashmap.c
 )
 
+target_compile_options(KademliaClient PRIVATE -g -O0 -Wall)
+
 target_link_libraries(KademliaClient OpenSSL::Crypto)
 
 # Doxygen configuration
