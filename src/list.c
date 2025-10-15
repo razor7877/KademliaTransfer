@@ -2,8 +2,8 @@
 
 #include <string.h>
 
-#include "peer.h"
 #include "log.h"
+#include "peer.h"
 
 void add_front(struct DList* list, struct Peer* peer) {
   if (!list || !peer) return;
@@ -71,6 +71,28 @@ struct Peer* remove_back(struct DList* list) {
   return tail_peer;
 }
 
+struct Peer* remove_node(struct DList* list, struct Peer* node) {
+  if (!list || !node) return NULL;
+
+  if (list->head->peer == node) {
+    struct DNode* head = list->head;
+    list->head = list->head->next;
+    if (list->head) list->head->prev = NULL;
+    return node;
+  }
+
+  struct DNode* prev = list->head;
+  while (prev->next != NULL && prev->next->peer != node) prev = prev->next;
+
+  if (prev->next->peer == node) {
+    struct DNode* to_delete = prev->next;
+    prev->next = to_delete->next;
+    if (prev->next) prev->next->prev = prev;
+    return node;
+  }
+  return NULL;
+}
+
 void dist_hash(HashID result, const HashID id1, const HashID id2) {
   for (int i = 0; i < SHA256_DIGEST_LENGTH; i++) {
     result[i] = id1[i] ^ id2[i];
@@ -96,8 +118,7 @@ static int compare_distance(const HashID dist1, const HashID dist2) {
 }
 
 int find_nearest(const struct DList* list, const HashID id,
-                           struct Peer** out_peers,
-                           size_t max_neighbors) {
+                 struct Peer** out_peers, size_t max_neighbors) {
   if (!list || !list->head || !out_peers || max_neighbors == 0) return 0;
 
   HashID neighbors_dist[max_neighbors];
@@ -114,8 +135,7 @@ int find_nearest(const struct DList* list, const HashID id,
       log_msg(LOG_WARN, "Store out_peers peer with addr %p", current->peer);
       out_peers[n] = current->peer;
       n += 1;
-    }
-    else {
+    } else {
       for (size_t i = 0; i < n; i++) {
         if (compare_distance(&neighbors_dist[i], &current_dist) > 0) {
           log_msg(LOG_WARN, "Store out_peers peer with addr %p", current->peer);
@@ -136,8 +156,8 @@ struct Peer* find_peer_by_id(const struct DList* list, const HashID id) {
   struct DNode* current = list->head;
   while (current != NULL) {
     if (memcmp(&current->peer->peer_id, id, sizeof(HashID)) == 0)
-        return current->peer;
-        
+      return current->peer;
+
     current = current->next;
   }
 

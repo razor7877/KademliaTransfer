@@ -27,17 +27,19 @@ typedef struct DList Buckets[BUCKET_COUNT];
 
 /**
  * @brief Finds and returns the n closest peers to our own node
- * 
+ *
  * @param buckets The buckets to search for peers in
  * @param target The target we are looking for
  * @param n The maximum number of close peers to search for
- * @return struct Peer** Returns an array of struct Peer*, entries are filled out with NULL if less than n peers were found
+ * @return struct Peer** Returns an array of struct Peer*, entries are filled
+ * out with NULL if less than n peers were found
  */
 struct Peer** find_closest_peers(Buckets buckets, HashID target, int n);
 
 /**
- * @brief Updates the peers in our buckets, should be called whenever we interact we a potentially new peer
- * 
+ * @brief Updates the peers in our buckets, should be called whenever we
+ * interact we a potentially new peer
+ *
  * @param bucket The buckets to updade peers with
  * @param peer The peer that was interacted with
  */

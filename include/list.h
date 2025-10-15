@@ -2,7 +2,6 @@
 
 #include "shared.h"
 
-
 /**
  * @file list.h
  * @brief Data structures and functions for manipulating doubly-linked lists
@@ -107,11 +106,12 @@ void dist_hash(HashID result, const HashID id1, const HashID id2);
  *
  * @param list The list in which to search
  * @param id The id that should be matched as closely as possible
- * @param out_peers 
- * @param max_neighbors 
- * @return int 
+ * @param out_peers
+ * @param max_neighbors
+ * @return int
  */
-int find_nearest(const struct DList* list, const HashID id, struct Peer** out_peers, size_t max_neighbors);
+int find_nearest(const struct DList* list, const HashID id,
+                 struct Peer** out_peers, size_t max_neighbors);
 
 /**
  * @brief Checks if a peer with a given ID exists in the list
@@ -121,3 +121,10 @@ int find_nearest(const struct DList* list, const HashID id, struct Peer** out_pe
  * @return struct Peer* Pointer to the found peer, or NULL if not found
  */
 struct Peer* find_peer_by_id(const struct DList* list, const HashID id);
+
+/**
+ * @brief Remove the node passed by parameter from the list
+ * @param list The list to which to remove the node
+ * @param peer The peer to remove from the list
+ */
+struct Peer* remove_node(struct DList* list, struct Peer* node);

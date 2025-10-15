@@ -65,13 +65,15 @@ struct Peer** find_closest_peers(Buckets buckets, HashID target, int n) {
   log_msg(LOG_DEBUG, "Bucket index for this distance is %d", bucket_index);
 
   // First get nodes from the bucket with nodes closest to the target
-  count += find_nearest(&buckets[bucket_index], target, result + count, n - count);
+  count +=
+      find_nearest(&buckets[bucket_index], target, result + count, n - count);
 
   // Extend our range to neighboring buckets until we searched everything or
   // found the number of requested peers
   int offset = 1;
 
-  while (count < n && (bucket_index - offset >= 0 || bucket_index + offset < BUCKET_COUNT)) {
+  while (count < n &&
+         (bucket_index - offset >= 0 || bucket_index + offset < BUCKET_COUNT)) {
     if (bucket_index - offset >= 0)
       count += find_nearest(&buckets[bucket_index - offset], target,
                             result + count, n - count);
@@ -91,7 +93,8 @@ struct Peer** find_closest_peers(Buckets buckets, HashID target, int n) {
   return result;
 }
 
-// This shall be improved upon later on, we should ideally do ranking using last_seen timestamps
+// This shall be improved upon later on, we should ideally do ranking using
+// last_seen timestamps
 void update_bucket_peers(Buckets bucket, struct Peer* peer) {
   if (!peer) {
     log_msg(LOG_ERROR, "Error in update_bucket_peers peer is NULL!");
@@ -121,9 +124,15 @@ void update_bucket_peers(Buckets bucket, struct Peer* peer) {
     log_msg(LOG_ERROR, "Error in update_bucket_peers bucket_index!");
     return;
   }
-
-  if (find_peer_by_id(&bucket[bucket_index], peer->peer_id)) {
-    // log_msg(LOG_DEBUG, "[update_bucket_peers]: Peer already present in bucket");
+  struct Peer* finded_peer =
+      find_peer_by_id(&bucket[bucket_index], peer->peer_id);
+  if (finded_peer) {
+    // log_msg(LOG_DEBUG, "[update_bucket_peers]: Peer already present in
+    // bucket");
+    finded_peer->last_seen = peer->last_seen;
+    if (remove_node(&bucket[bucket_index], finded_peer) == NULL) return;
+    add_back(&bucket[bucket_index], finded_peer);
+    // to do change to the back
     return;
   }
 
@@ -132,11 +141,12 @@ void update_bucket_peers(Buckets bucket, struct Peer* peer) {
     return;
   }
 
-  log_msg(LOG_DEBUG, "got new peer in bucket with port %d", ntohs(peer->peer_addr.sin_port));
+  log_msg(LOG_DEBUG, "got new peer in bucket with port %d",
+          ntohs(peer->peer_addr.sin_port));
 
   // Make sure to copy whatever data the user gave us
   struct Peer* add = malloc(sizeof(struct Peer));
   *add = *peer;
 
-  add_front(&bucket[bucket_index], add); 
+  add_back(&bucket[bucket_index], add);
 }
