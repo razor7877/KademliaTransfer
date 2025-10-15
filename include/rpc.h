@@ -32,10 +32,10 @@ struct FileMagnet;
                       sizeof(struct RPCFindNodeResponse))))))
 
 #define RPC_MAGIC "KDMT"
-
 #pragma pack(push, 1)
 
-enum RPCCallType {
+enum RPCCallType
+{
   PING = 1,
   STORE = 2,
   FIND_NODE = 4,
@@ -47,49 +47,58 @@ enum RPCCallType {
   BROADCAST = 256
 };
 
-struct RPCPeer {
+struct RPCPeer
+{
   HashID peer_id;
   struct sockaddr_in peer_addr;
   PubKey peer_key;
 };
 
-struct RPCKeyValue {
+struct RPCKeyValue
+{
   HashID key;
   size_t num_values;
   struct RPCPeer values[K_VALUE];
 };
 
-struct RPCMessageHeader {
+struct RPCMessageHeader
+{
   char magic_number[4];
   int packet_size;
   enum RPCCallType call_type;
-};
-
-struct RPCPing {
-  struct RPCMessageHeader header;
-};
-
-struct RPCBroadcast {
-  struct RPCMessageHeader header;
   struct RPCPeer peer;
 };
 
-struct RPCStore {
+struct RPCPing
+{
+  struct RPCMessageHeader header;
+};
+
+struct RPCBroadcast
+{
+  struct RPCMessageHeader header;
+};
+
+struct RPCStore
+{
   struct RPCMessageHeader header;
   struct RPCKeyValue key_value;
 };
 
-struct RPCFind {
+struct RPCFind
+{
   struct RPCMessageHeader header;
   HashID key;
 };
 
-struct RPCResponse {
+struct RPCResponse
+{
   struct RPCMessageHeader header;
   uint8_t success;
 };
 
-struct RPCFindValueResponse {
+struct RPCFindValueResponse
+{
   struct RPCMessageHeader header;
   uint8_t success;
   uint8_t found_key;
@@ -98,7 +107,8 @@ struct RPCFindValueResponse {
   struct RPCPeer closest[K_VALUE];
 };
 
-struct RPCFindNodeResponse {
+struct RPCFindNodeResponse
+{
   struct RPCMessageHeader header;
   uint8_t success;
   uint8_t found_key;
@@ -114,21 +124,21 @@ struct RPCFindNodeResponse {
  * @param contents The RPC request packet
  * @param length The length of the RPC request
  */
-void handle_rpc_request(struct pollfd* sock, char* contents, size_t length);
+void handle_rpc_request(struct pollfd *sock, char *contents, size_t length);
 
 /**
  * @brief Handles uploading a file to the P2P network
  *
  * @param file The metadata about the file to upload
  */
-int handle_rpc_upload(struct FileMagnet* file);
+int handle_rpc_upload(struct FileMagnet *file);
 
 /**
  * @brief Handles downloading a file from the P2P network
  *
  * @param file The metadata about the file to upload
  */
-int handle_rpc_download(struct FileMagnet* file);
+int handle_rpc_download(struct FileMagnet *file);
 
 /**
  * @brief Handles refreshing the bucket

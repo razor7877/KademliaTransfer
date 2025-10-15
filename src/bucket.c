@@ -14,11 +14,15 @@
  * @return int Returns the bucket to choose for this distance, or -1 if the node
  * is ourselves
  */
-static int get_bucket_index(HashID distance) {
-  for (int byte = 0; byte < sizeof(HashID); byte++) {
+static int get_bucket_index(HashID distance)
+{
+  for (int byte = 0; byte < sizeof(HashID); byte++)
+  {
     unsigned char byte_value = distance[byte];
-    for (int bit = 0; bit < 8; bit++) {
-      if (byte_value & (0x80 >> bit)) {
+    for (int bit = 0; bit < 8; bit++)
+    {
+      if (byte_value & (0x80 >> bit))
+      {
         // log_msg(LOG_WARN, "byte is %d and bit is %d", byte, bit);
         return byte * 8 + bit;
       }
@@ -28,9 +32,10 @@ static int get_bucket_index(HashID distance) {
   return -1;
 };
 
-struct Peer** find_closest_peers(Buckets buckets, HashID target, int n) {
+struct Peer **find_closest_peers(Buckets buckets, HashID target, int n)
+{
   // log_msg(LOG_DEBUG, "Searching for %d closest peers to ")
-  struct Peer** result = calloc(n, sizeof(struct Peer*));
+  struct Peer **result = calloc(n, sizeof(struct Peer *));
   pointer_not_null(result, "find_closest_peers malloc error");
 
   char target_str[sizeof(HashID) * 2 + 1] = {0};
@@ -41,7 +46,8 @@ struct Peer** find_closest_peers(Buckets buckets, HashID target, int n) {
   int count = 0;
   HashID own_id = {0};
 
-  if (get_own_id(own_id) != 0) {
+  if (get_own_id(own_id) != 0)
+  {
     log_msg(LOG_ERROR, "find_closest_peers get_own_id error");
     return NULL;
   }
@@ -57,7 +63,8 @@ struct Peer** find_closest_peers(Buckets buckets, HashID target, int n) {
 
   int bucket_index = get_bucket_index(dist_to_target);
 
-  if (bucket_index == -1) {
+  if (bucket_index == -1)
+  {
     log_msg(LOG_WARN, "find_closest_peers - Why are we looking for ourselves?");
     return NULL;
   }
@@ -73,7 +80,8 @@ struct Peer** find_closest_peers(Buckets buckets, HashID target, int n) {
   int offset = 1;
 
   while (count < n &&
-         (bucket_index - offset >= 0 || bucket_index + offset < BUCKET_COUNT)) {
+         (bucket_index - offset >= 0 || bucket_index + offset < BUCKET_COUNT))
+  {
     if (bucket_index - offset >= 0)
       count += find_nearest(&buckets[bucket_index - offset], target,
                             result + count, n - count);
@@ -85,7 +93,8 @@ struct Peer** find_closest_peers(Buckets buckets, HashID target, int n) {
     offset++;
   }
 
-  if (count == 0) {
+  if (count == 0)
+  {
     free(result);
     return NULL;
   }
@@ -95,13 +104,16 @@ struct Peer** find_closest_peers(Buckets buckets, HashID target, int n) {
 
 // This shall be improved upon later on, we should ideally do ranking using
 // last_seen timestamps
-void update_bucket_peers(Buckets bucket, struct Peer* peer) {
-  if (!peer) {
+void update_bucket_peers(Buckets bucket, struct Peer *peer)
+{
+  if (!peer)
+  {
     log_msg(LOG_ERROR, "Error in update_bucket_peers peer is NULL!");
     return;
   }
 
-  if (!bucket) {
+  if (!bucket)
+  {
     log_msg(LOG_ERROR, "Error in update_bucket_peers bucket is null");
     return;
   }
@@ -109,7 +121,8 @@ void update_bucket_peers(Buckets bucket, struct Peer* peer) {
   HashID own_id;
   int ret = get_own_id(own_id);
 
-  if (ret != 0) {
+  if (ret != 0)
+  {
     log_msg(LOG_ERROR, "Error in update_bucket_peers get_own_id!");
     return;
   }
@@ -120,23 +133,25 @@ void update_bucket_peers(Buckets bucket, struct Peer* peer) {
   // Find the bucket in which we should store the peer
   int bucket_index = get_bucket_index(distance);
 
-  if (bucket_index == -1) {
+  if (bucket_index == -1)
+  {
     log_msg(LOG_ERROR, "Error in update_bucket_peers bucket_index!");
     return;
   }
-  struct Peer* finded_peer =
+  struct Peer *finded_peer =
       find_peer_by_id(&bucket[bucket_index], peer->peer_id);
-  if (finded_peer) {
-    // log_msg(LOG_DEBUG, "[update_bucket_peers]: Peer already present in
-    // bucket");
+  if (finded_peer)
+  {
     finded_peer->last_seen = peer->last_seen;
-    if (remove_node(&bucket[bucket_index], finded_peer) == NULL) return;
+    if (remove_node(&bucket[bucket_index], finded_peer) == NULL)
+      return;
     add_back(&bucket[bucket_index], finded_peer);
     // to do change to the back
     return;
   }
 
-  if (bucket[bucket_index].size >= BUCKET_SIZE) {
+  if (bucket[bucket_index].size >= BUCKET_SIZE)
+  {
     // log_msg(LOG_DEBUG, "[update_bucket_peers]: The Bucket is full");
     return;
   }
@@ -148,7 +163,7 @@ void update_bucket_peers(Buckets bucket, struct Peer* peer) {
           bucket_index, ip_str, ntohs(peer->peer_addr.sin_port));
 
   // Make sure to copy whatever data the user gave us
-  struct Peer* add = malloc(sizeof(struct Peer));
+  struct Peer *add = malloc(sizeof(struct Peer));
   *add = *peer;
 
   add_back(&bucket[bucket_index], add);
