@@ -1,10 +1,12 @@
 #pragma once
+
+#include <time.h>
+
 /**
  * @file schedule.h
  * @brief This file defines structures for schedule task
  *
  */
-#include <time.h>
 
 typedef void(ScheduledFunc)(void);
 

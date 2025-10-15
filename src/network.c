@@ -37,68 +37,66 @@ static struct Schedule tasks[] = {
     {"broadcast_discovery", 0, 1.0, broadcast_discovery_request},
     {NULL, 0, 0, NULL}};
 
-int get_rpc_request(struct pollfd* sock, char* buf, size_t* out_size) {
-    int sock_type = 0;
-    socklen_t optlen = sizeof(sock_type);
-    if (getsockopt(sock->fd, SOL_SOCKET, SO_TYPE, &sock_type, &optlen) < 0) {
-        perror("getsockopt");
-        return -1;
-    }
+int get_rpc_request(struct pollfd *sock, char *buf, size_t *out_size) {
+  int sock_type = 0;
+  socklen_t optlen = sizeof(sock_type);
+  if (getsockopt(sock->fd, SOL_SOCKET, SO_TYPE, &sock_type, &optlen) < 0) {
+    perror("getsockopt");
+    return -1;
+  }
 
-    ssize_t received = 0;
+  ssize_t received = 0;
 
-    if (sock_type == SOCK_STREAM) {
-        // TCP: read header first
-        received = recv_all(sock->fd, buf, sizeof(struct RPCMessageHeader));
-        if (received < sizeof(struct RPCMessageHeader)) {
-            log_msg(LOG_ERROR, "Failed to read RPC header");
-            return -1;
-        }
+  if (sock_type == SOCK_STREAM) {
+    // TCP: read header first
+    received = recv_all(sock->fd, buf, sizeof(struct RPCMessageHeader));
+    if (received < sizeof(struct RPCMessageHeader)) {
+      log_msg(LOG_ERROR, "Failed to read RPC header");
+      return -1;
     }
-    else if (sock_type == SOCK_DGRAM) {
-        // UDP: single recvfrom will give entire datagram
-        struct sockaddr_in from_addr = {0};
-        socklen_t from_len = sizeof(from_addr);
-        received = recvfrom(sock->fd, buf, MAX_RPC_PACKET_SIZE, 0,
-                            (struct sockaddr*)&from_addr, &from_len);
-        if (received <= 0) {
-            perror("recvfrom");
-            return -1;
-        }
+  } else if (sock_type == SOCK_DGRAM) {
+    // UDP: single recvfrom will give entire datagram
+    struct sockaddr_in from_addr = {0};
+    socklen_t from_len = sizeof(from_addr);
+    received = recvfrom(sock->fd, buf, MAX_RPC_PACKET_SIZE, 0,
+                        (struct sockaddr *)&from_addr, &from_len);
+    if (received <= 0) {
+      perror("recvfrom");
+      return -1;
     }
-    else {
-        log_msg(LOG_ERROR, "Unknown socket type");
-        return -1;
-    }
+  } else {
+    log_msg(LOG_ERROR, "Unknown socket type");
+    return -1;
+  }
 
-    // Interpret header
-    struct RPCMessageHeader* header = (struct RPCMessageHeader*)buf;
-    // log_msg(LOG_INFO, "Packet size is: %d", header->packet_size);
+  // Interpret header
+  struct RPCMessageHeader *header = (struct RPCMessageHeader *)buf;
+  // log_msg(LOG_INFO, "Packet size is: %d", header->packet_size);
 
-    if (header->packet_size > MAX_RPC_PACKET_SIZE) {
-        log_msg(LOG_ERROR, "Packet too large! Discarding.");
-        return -1;
-    }
+  if (header->packet_size > MAX_RPC_PACKET_SIZE) {
+    log_msg(LOG_ERROR, "Packet too large! Discarding.");
+    return -1;
+  }
 
-    if (sock_type == SOCK_STREAM) {
-        // TCP: read rest of packet
-        received = recv_all(sock->fd, buf + sizeof(struct RPCMessageHeader),
-                            header->packet_size - sizeof(struct RPCMessageHeader));
-        if (received < 0) {
-            log_msg(LOG_ERROR, "Error reading full RPC request: %s", strerror(errno));
-            return -1;
-        }
+  if (sock_type == SOCK_STREAM) {
+    // TCP: read rest of packet
+    received = recv_all(sock->fd, buf + sizeof(struct RPCMessageHeader),
+                        header->packet_size - sizeof(struct RPCMessageHeader));
+    if (received < 0) {
+      log_msg(LOG_ERROR, "Error reading full RPC request: %s", strerror(errno));
+      return -1;
     }
-    else {
-        // UDP: we already got the full packet in one recvfrom
-        if (received != header->packet_size) {
-            log_msg(LOG_WARN, "UDP packet size mismatch: got %zd, expected %u", received, header->packet_size);
-            return -1;
-        }
+  } else {
+    // UDP: we already got the full packet in one recvfrom
+    if (received != header->packet_size) {
+      log_msg(LOG_WARN, "UDP packet size mismatch: got %zd, expected %u",
+              received, header->packet_size);
+      return -1;
     }
+  }
 
-    *out_size = received;
-    return 0;
+  *out_size = received;
+  return 0;
 }
 
 /**
@@ -109,7 +107,7 @@ int get_rpc_request(struct pollfd* sock, char* buf, size_t* out_size) {
  * @param buf A pointer to the buffer where data can be read into
  * @param buf_index Current index into the buffer
  */
-static void get_http_request(struct pollfd* sock, char* buf) {
+static void get_http_request(struct pollfd *sock, char *buf) {
   log_msg(LOG_INFO, "Handling HTTP request");
 
   ssize_t received =
@@ -135,13 +133,11 @@ static void broadcast_discovery_request(void) {
   server_addr.sin_port = htons(BROADCAST_PORT);
   server_addr.sin_addr.s_addr = htonl(INADDR_BROADCAST);
 
-  struct RPCBroadcast request = {
-    .header = {
-      .magic_number = RPC_MAGIC,
-      .packet_size = sizeof(struct RPCBroadcast),
-      .call_type = BROADCAST,
-    }
-  };
+  struct RPCBroadcast request = {.header = {
+                                     .magic_number = RPC_MAGIC,
+                                     .packet_size = sizeof(struct RPCBroadcast),
+                                     .call_type = BROADCAST,
+                                 }};
 
   struct Peer peer;
   if (create_own_peer(&peer) != 0) {
@@ -156,9 +152,10 @@ static void broadcast_discovery_request(void) {
 
   // Broadcast a RPC ping packet to everyone with our info
   ssize_t sent = sendto(sock_array[1].fd, &request, sizeof(request), 0,
-                        (struct sockaddr*)&server_addr, sizeof(server_addr));
+                        (struct sockaddr *)&server_addr, sizeof(server_addr));
 
-  if (sent < 0) perror("sendto");
+  if (sent < 0)
+    perror("sendto");
 }
 
 /**
@@ -172,10 +169,11 @@ static void handle_incoming() {
     struct sockaddr_in client_addr = {0};
     socklen_t size = sizeof(client_addr);
 
-    int new_fd = accept(listen_fd, (struct sockaddr*)&client_addr, &size);
+    int new_fd = accept(listen_fd, (struct sockaddr *)&client_addr, &size);
     if (new_fd >= 0) {
       int i = 0;
-      while (sock_array[i].fd != -1) i++;
+      while (sock_array[i].fd != -1)
+        i++;
 
       if (i < MAX_SOCK) {
         sock_array[i].fd = new_fd;
@@ -202,7 +200,7 @@ static void handle_incoming() {
     // Peek first 4 bytes to check magic
     uint8_t peek_magic[4] = {0};
     ssize_t recvd = recvfrom(sock_array[1].fd, peek_magic, sizeof(peek_magic),
-                             MSG_PEEK, (struct sockaddr*)&client_addr, &size);
+                             MSG_PEEK, (struct sockaddr *)&client_addr, &size);
 
     char my_ip[INET_ADDRSTRLEN] = {0};
     struct sockaddr_in my_addr;
@@ -241,7 +239,7 @@ static void handle_incoming() {
 
     size_t packet_size = 0;
     if (get_rpc_request(&udp_sock, buf, &packet_size) == 0) {
-        handle_rpc_request(&udp_sock, buf, packet_size);
+      handle_rpc_request(&udp_sock, buf, packet_size);
     }
 
     sock_array[1].revents = 0;
@@ -267,7 +265,8 @@ static void handle_connected() {
     // Handle message from connection
     if (sock_array[i].revents & POLLIN) {
       char peek_buf[4] = {0};
-      ssize_t peeked = recv_all_peek(sock_array[i].fd, peek_buf, sizeof(peek_buf));
+      ssize_t peeked =
+          recv_all_peek(sock_array[i].fd, peek_buf, sizeof(peek_buf));
 
       if (peeked <= 0) {
         if (peeked < 0)
@@ -286,10 +285,9 @@ static void handle_connected() {
       if (peeked == 4 && memcmp(peek_buf, RPC_MAGIC, 4) == 0) {
         size_t packet_size = 0;
         if (get_rpc_request(&sock_array[i], buf, &packet_size) == 0) {
-            handle_rpc_request(&sock_array[i], buf, packet_size);
+          handle_rpc_request(&sock_array[i], buf, packet_size);
         }
-      }
-      else
+      } else
         get_http_request(&sock_array[i], buf);
 
       sock_array[i].revents = 0;
@@ -298,7 +296,7 @@ static void handle_connected() {
 }
 
 static void handle_pending() {
-  struct Command* cmd;
+  struct Command *cmd;
 
   bool had_commands = commands.count > 0;
 
@@ -308,32 +306,32 @@ static void handle_pending() {
     log_msg(LOG_DEBUG, "Handling command from P2P client");
 
     switch (cmd->cmd_type) {
-      case CMD_SHOW_STATUS:
-        log_msg(LOG_DEBUG, "Show status");
-        cmd->result = true;
-        break;
+    case CMD_SHOW_STATUS:
+      log_msg(LOG_DEBUG, "Show status");
+      cmd->result = true;
+      break;
 
-      case CMD_UPLOAD:
-        if (cmd->file == NULL) {
-          log_msg(LOG_WARN, "Got upload command with empty file");
-          continue;
-        }
-        cmd->result = handle_rpc_upload(cmd->file);
-        break;
+    case CMD_UPLOAD:
+      if (cmd->file == NULL) {
+        log_msg(LOG_WARN, "Got upload command with empty file");
+        continue;
+      }
+      cmd->result = handle_rpc_upload(cmd->file);
+      break;
 
-      case CMD_DOWNLOAD:
-        if (cmd->file == NULL) {
-          log_msg(LOG_WARN, "Got download command with empty file");
-          continue;
-        }
+    case CMD_DOWNLOAD:
+      if (cmd->file == NULL) {
+        log_msg(LOG_WARN, "Got download command with empty file");
+        continue;
+      }
 
-        cmd->result = handle_rpc_download(cmd->file);
-        break;
+      cmd->result = handle_rpc_download(cmd->file);
+      break;
 
-      default:
-        log_msg(LOG_DEBUG, "Unknown command");
-        cmd->result = -1;
-        break;
+    default:
+      log_msg(LOG_DEBUG, "Unknown command");
+      cmd->result = -1;
+      break;
     }
 
     // Set state and signal to caller thread that we handled the command
@@ -343,7 +341,8 @@ static void handle_pending() {
     pthread_mutex_unlock(&cmd->lock);
   }
 
-  if (had_commands) log_msg(LOG_DEBUG, "Finished handling commands");
+  if (had_commands)
+    log_msg(LOG_DEBUG, "Finished handling commands");
 }
 
 /**
@@ -377,7 +376,7 @@ void init_network() {
   server_addr.sin_port = htons(SERVER_PORT);
   server_addr.sin_addr.s_addr = INADDR_ANY;
 
-  ret = bind(listen_fd, (struct sockaddr*)&server_addr, sizeof(server_addr));
+  ret = bind(listen_fd, (struct sockaddr *)&server_addr, sizeof(server_addr));
   die(ret, "bind");
 
   ret = listen(listen_fd, MAX_WAIT_CON);
@@ -402,7 +401,7 @@ void init_network() {
       setsockopt(broad_fd, SOL_SOCKET, SO_BROADCAST, &reuse, sizeof(reuse));
   die(broad_ret, "setsockopt(SO_BROADCAST) failed");
 
-  broad_ret = bind(broad_fd, (struct sockaddr*)&broadcast_server_addr,
+  broad_ret = bind(broad_fd, (struct sockaddr *)&broadcast_server_addr,
                    sizeof(broadcast_server_addr));
   die(broad_ret, "bind broadcast listen");
 
@@ -414,7 +413,8 @@ void init_network() {
   sock_array[1].events = POLLIN;
   sock_array[1].revents = 0;
 
-  for (int i = 2; i < MAX_SOCK; i++) sock_array[i].fd = -1;
+  for (int i = 2; i < MAX_SOCK; i++)
+    sock_array[i].fd = -1;
 }
 
 void update_network() {
@@ -440,7 +440,7 @@ void stop_network() {
   }
 }
 
-int connect_to_peer(const struct sockaddr_in* addr) {
+int connect_to_peer(const struct sockaddr_in *addr) {
   if (!addr) {
     log_msg(LOG_ERROR, "connect_to_peer: NULL address");
     return -1;
@@ -463,7 +463,7 @@ int connect_to_peer(const struct sockaddr_in* addr) {
 
   log_msg(LOG_DEBUG, "Connecting to peer %s:%d", ip_str, ntohs(addr->sin_port));
 
-  if (connect(sock, (const struct sockaddr*)addr, sizeof(*addr)) < 0) {
+  if (connect(sock, (const struct sockaddr *)addr, sizeof(*addr)) < 0) {
     log_msg(LOG_WARN, "connect_to_peer: connect() failed to %s:%d (%s)", ip_str,
             ntohs(addr->sin_port), strerror(errno));
     close(sock);

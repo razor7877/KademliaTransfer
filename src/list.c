@@ -2,13 +2,14 @@
 
 #include <string.h>
 
-#include "peer.h"
 #include "log.h"
+#include "peer.h"
 
-void add_front(struct DList* list, struct Peer* peer) {
-  if (!list || !peer) return;
+void add_front(struct DList *list, struct Peer *peer) {
+  if (!list || !peer)
+    return;
 
-  struct DNode* new_node = (struct DNode*)malloc(sizeof(struct DNode));
+  struct DNode *new_node = (struct DNode *)malloc(sizeof(struct DNode));
   pointer_not_null(new_node,
                    "Error in add_front the new_node node is unitialized!\n");
 
@@ -26,10 +27,11 @@ void add_front(struct DList* list, struct Peer* peer) {
   }
 }
 
-void add_back(struct DList* list, struct Peer* peer) {
-  if (!list || !peer) return;
+void add_back(struct DList *list, struct Peer *peer) {
+  if (!list || !peer)
+    return;
 
-  struct DNode* new_node = (struct DNode*)malloc(sizeof(struct DNode));
+  struct DNode *new_node = (struct DNode *)malloc(sizeof(struct DNode));
   pointer_not_null(new_node,
                    "Error in add_back the new_node node is unitialized!\n");
 
@@ -47,25 +49,29 @@ void add_back(struct DList* list, struct Peer* peer) {
   }
 }
 
-struct Peer* remove_front(struct DList* list) {
-  if (!list || !list->head) return (NULL);
+struct Peer *remove_front(struct DList *list) {
+  if (!list || !list->head)
+    return (NULL);
 
-  struct DNode* head = list->head;
-  if (list->head->next) list->head->next->prev = NULL;
+  struct DNode *head = list->head;
+  if (list->head->next)
+    list->head->next->prev = NULL;
   list->head = head->next;
-  struct Peer* head_peer = head->peer;
+  struct Peer *head_peer = head->peer;
   free(head);
   list->size -= 1;
   return head_peer;
 }
 
-struct Peer* remove_back(struct DList* list) {
-  if (!list || !list->tail) return (NULL);
+struct Peer *remove_back(struct DList *list) {
+  if (!list || !list->tail)
+    return (NULL);
 
-  struct DNode* tail = list->tail;
-  if (list->tail->prev) list->tail->prev->next = NULL;
+  struct DNode *tail = list->tail;
+  if (list->tail->prev)
+    list->tail->prev->next = NULL;
   list->tail = tail->prev;
-  struct Peer* tail_peer = tail->peer;
+  struct Peer *tail_peer = tail->peer;
   free(tail);
   list->size -= 1;
   return tail_peer;
@@ -89,21 +95,23 @@ void dist_hash(HashID result, const HashID id1, const HashID id2) {
  */
 static int compare_distance(const HashID dist1, const HashID dist2) {
   for (int i = 0; i < SHA256_DIGEST_LENGTH; i++) {
-    if (dist1[i] < dist2[i]) return -1;
-    if (dist1[i] > dist2[i]) return 1;
+    if (dist1[i] < dist2[i])
+      return -1;
+    if (dist1[i] > dist2[i])
+      return 1;
   }
   return 0;
 }
 
-int find_nearest(const struct DList* list, const HashID id,
-                           struct Peer** out_peers,
-                           size_t max_neighbors) {
-  if (!list || !list->head || !out_peers || max_neighbors == 0) return 0;
+int find_nearest(const struct DList *list, const HashID id,
+                 struct Peer **out_peers, size_t max_neighbors) {
+  if (!list || !list->head || !out_peers || max_neighbors == 0)
+    return 0;
 
   HashID neighbors_dist[max_neighbors];
   size_t n = 0;
 
-  struct DNode* current = list->head;
+  struct DNode *current = list->head;
 
   while (current != NULL) {
     HashID current_dist = {0};
@@ -114,8 +122,7 @@ int find_nearest(const struct DList* list, const HashID id,
       log_msg(LOG_WARN, "Store out_peers peer with addr %p", current->peer);
       out_peers[n] = current->peer;
       n += 1;
-    }
-    else {
+    } else {
       for (size_t i = 0; i < n; i++) {
         if (compare_distance(&neighbors_dist[i], &current_dist) > 0) {
           log_msg(LOG_WARN, "Store out_peers peer with addr %p", current->peer);
@@ -130,14 +137,15 @@ int find_nearest(const struct DList* list, const HashID id,
   return n;
 }
 
-struct Peer* find_peer_by_id(const struct DList* list, const HashID id) {
-  if (!list || !list->head || !id) return NULL;
+struct Peer *find_peer_by_id(const struct DList *list, const HashID id) {
+  if (!list || !list->head || !id)
+    return NULL;
 
-  struct DNode* current = list->head;
+  struct DNode *current = list->head;
   while (current != NULL) {
     if (memcmp(&current->peer->peer_id, id, sizeof(HashID)) == 0)
-        return current->peer;
-        
+      return current->peer;
+
     current = current->next;
   }
 

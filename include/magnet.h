@@ -36,7 +36,7 @@ struct FileMagnet {
    * @brief Filename to display to the user
    *
    */
-  char* display_name;
+  char *display_name;
 
   /**
    * @brief File size in bytes
@@ -48,49 +48,49 @@ struct FileMagnet {
    * @brief Tracker URL
    *
    */
-  char* address_tracker;
+  char *address_tracker;
 
   /**
    * @brief Web seed address
    *
    */
-  char* web_seed;
+  char *web_seed;
 
   /**
    * @brief Fallback web server download address if no available peers
    *
    */
-  char* acceptable_source;
+  char *acceptable_source;
 
   /**
    * @brief Download source for the file, generally over HTTP
    *
    */
-  char* exact_source;
+  char *exact_source;
 
   /**
    * @brief List of keyword topics
    *
    */
-  char* keyword_topic;
+  char *keyword_topic;
 
   /**
    * @brief Link to the metafile that contains a list of magnets
    *
    */
-  char* manifest_topic;
+  char *manifest_topic;
 
   /**
    * @brief The specific files that should be downloaded on the torrent
    *
    */
-  struct Range* select_only;
+  struct Range *select_only;
 
   /**
    * @brief An array containing the addresses of peers to connect to
    *
    */
-  struct Peer** peer_addresses;
+  struct Peer **peer_addresses;
 };
 
 /**
@@ -100,7 +100,7 @@ struct FileMagnet {
  * @param filename_len The length of the filename
  * @return struct FileMagnet* Returns a pointer to a new magnet
  */
-struct FileMagnet* create_magnet(const char* filename, size_t filename_len);
+struct FileMagnet *create_magnet(const char *filename, size_t filename_len);
 
 /**
  * @brief Serializes the magnet data to URI format
@@ -108,7 +108,7 @@ struct FileMagnet* create_magnet(const char* filename, size_t filename_len);
  * @param magnet The magnet to be serialized
  * @return char* Returns a pointer to a buffer containing the URI contents
  */
-char* save_magnet_to_uri(struct FileMagnet* magnet);
+char *save_magnet_to_uri(struct FileMagnet *magnet);
 
 /**
  * @brief Parses the contents of a magnet from the URI representation
@@ -118,11 +118,11 @@ char* save_magnet_to_uri(struct FileMagnet* magnet);
  * @return FileMagnet* Returns a pointer to the parsed structure, caller is
  * responsible for freeing
  */
-struct FileMagnet* parse_magnet_from_uri(char* contents, size_t len);
+struct FileMagnet *parse_magnet_from_uri(char *contents, size_t len);
 
 /**
  * @brief Frees the resources allocated for a magnet
  *
  * @param magnet The magnet for which the resources should be freed
  */
-void free_magnet(struct FileMagnet* magnet);
+void free_magnet(struct FileMagnet *magnet);

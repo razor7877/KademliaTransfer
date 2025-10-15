@@ -5,10 +5,12 @@ networks:
 services:
   peer:
     build: .
+    volumes:
+      - ./files/:/app/files
     networks:
       - kadnet
     deploy:
-      replicas: 10
+      replicas: 20
     stdin_open: false
     tty: false
     environment:
