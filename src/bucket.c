@@ -137,12 +137,15 @@ void update_bucket_peers(Buckets bucket, struct Peer* peer) {
   }
 
   if (bucket[bucket_index].size >= BUCKET_SIZE) {
-    log_msg(LOG_DEBUG, "[update_bucket_peers]: The Bucket is full");
+    // log_msg(LOG_DEBUG, "[update_bucket_peers]: The Bucket is full");
     return;
   }
 
-  log_msg(LOG_DEBUG, "got new peer in bucket with port %d",
-          ntohs(peer->peer_addr.sin_port));
+  char ip_str[INET_ADDRSTRLEN] = {0};
+  inet_ntop(AF_INET, &peer->peer_addr.sin_addr, ip_str, sizeof(ip_str));
+
+  log_msg(LOG_DEBUG, "got new peer in bucket %d with ip %s and port %d",
+          bucket_index, ip_str, ntohs(peer->peer_addr.sin_port));
 
   // Make sure to copy whatever data the user gave us
   struct Peer* add = malloc(sizeof(struct Peer));

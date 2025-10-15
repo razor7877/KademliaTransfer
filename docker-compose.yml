@@ -1,0 +1,15 @@
+networks:
+  kadnet:
+    driver: bridge
+
+services:
+  peer:
+    build: .
+    networks:
+      - kadnet
+    deploy:
+      replicas: 10
+    stdin_open: false
+    tty: false
+    environment:
+      - DISABLE_CLI=1

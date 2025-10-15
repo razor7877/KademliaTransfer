@@ -1,10 +1,10 @@
 #pragma once
 
 // Kademlia RPC functions implementation
-#include <openssl/sha.h>
-#include <stdbool.h>
 #include <arpa/inet.h>
+#include <openssl/sha.h>
 #include <poll.h>
+#include <stdbool.h>
 
 #include "bucket.h"
 #include "shared.h"
@@ -14,21 +14,22 @@ struct FileMagnet;
 /**
  * @file rpc.h
  * @brief Remote Procedure Calls Protocol
- * 
- * This file defines all the main structures and functions used for the P2P peer discovery and communication.
- * It defines the structure of the different Kademlia packets, and how data such as peer information should be serialized.
- * 
+ *
+ * This file defines all the main structures and functions used for the P2P peer
+ * discovery and communication. It defines the structure of the different
+ * Kademlia packets, and how data such as peer information should be serialized.
+ *
  */
 
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
-#define MAX_RPC_PACKET_SIZE \
-    MAX(sizeof(struct RPCPing), \
-    MAX(sizeof(struct RPCStore), \
-    MAX(sizeof(struct RPCFind), \
-    MAX(sizeof(struct RPCResponse), \
-    MAX(sizeof(struct RPCFindValueResponse), \
-        sizeof(struct RPCFindNodeResponse))))))
+#define MAX_RPC_PACKET_SIZE                                \
+  MAX(sizeof(struct RPCPing),                              \
+      MAX(sizeof(struct RPCStore),                         \
+          MAX(sizeof(struct RPCFind),                      \
+              MAX(sizeof(struct RPCResponse),              \
+                  MAX(sizeof(struct RPCFindValueResponse), \
+                      sizeof(struct RPCFindNodeResponse))))))
 
 #define RPC_MAGIC "KDMT"
 
@@ -109,7 +110,7 @@ struct RPCFindNodeResponse {
 
 /**
  * @brief Handles a RPC request
- * 
+ *
  * @param contents The RPC request packet
  * @param length The length of the RPC request
  */
@@ -117,14 +118,20 @@ void handle_rpc_request(struct pollfd* sock, char* contents, size_t length);
 
 /**
  * @brief Handles uploading a file to the P2P network
- * 
+ *
  * @param file The metadata about the file to upload
  */
 int handle_rpc_upload(struct FileMagnet* file);
 
 /**
  * @brief Handles downloading a file from the P2P network
- * 
+ *
  * @param file The metadata about the file to upload
  */
 int handle_rpc_download(struct FileMagnet* file);
+
+/**
+ * @brief Handles refreshing the bucket
+ *
+ */
+void handle_rpc_refresh_bucket();
