@@ -26,6 +26,16 @@ typedef struct {
 } VectorPtr;
 
 /**
+ * @brief Comparator function for vector_sort with userdata
+ *
+ * @param a Pointer to first element
+ * @param b Pointer to second element
+ * @param userdata User-defined context pointer
+ * @return true if a < b, false otherwise
+ */
+typedef bool (*VectorCmpFunc)(void *a, void *b, const void *userdata);
+
+/**
  * @brief Initialize a vector
  *
  * @param vec Pointer to vector
@@ -65,3 +75,13 @@ void *vector_get(VectorPtr *vec, size_t index);
  * @param elem Pointer to element
  */
 void vector_set(VectorPtr *vec, size_t index, void *elem);
+
+/**
+ * @brief Sort a VectorPtr using a user-supplied comparison function with
+ * userdata
+ *
+ * @param vec Pointer to the vector
+ * @param cmp Comparison function returning true if a < b
+ * @param userdata Pointer to user data for the comparator
+ */
+void vector_sort(VectorPtr *vec, VectorCmpFunc cmp, const void *userdata);

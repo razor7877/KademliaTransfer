@@ -48,23 +48,44 @@ void cli_download_file() {
 
   magnet_link[strcspn(magnet_link, "\n")] = '\0';
 
+  struct stat st;
+  if (stat(magnet_link, &st) != 0) {
+    log_msg(LOG_ERROR, "File does not exist! Please entir valid filename.");
+    return;
+  }
+
+  if (S_ISDIR(st.st_mode)) {
+    log_msg(LOG_ERROR, "Can't open directory as file");
+    return;
+  }
+
   // Load magnet file contents from disk
   FILE *file = fopen(magnet_link, "r");
-
   if (file == NULL) {
-    log_msg(LOG_ERROR, "File does not exist! Please enter valid filename.\n");
+    log_msg(LOG_ERROR, "File does not exist! Please enter valid filename.");
     return;
   }
 
   // Get size, allocate memory and read contents into the buffer
   fseek(file, 0, SEEK_END);
   long size = ftell(file);
+
+  if (size < 0) {
+    log_msg(LOG_ERROR, "Invalid file size or ftell failed");
+    fclose(file);
+    return;
+  }
+
   fseek(file, 0, SEEK_SET);
 
-  void *contents = malloc(size);
+  void *contents = malloc((size_t)size);
   pointer_not_null(contents, "cli_download_file malloc error");
 
-  fread(contents, size, 1, file);
+  if (fread(contents, 1, size, file) != (size_t)size) {
+    log_msg(LOG_ERROR, "Couldn't read entire file from disk - read %zu", read);
+    fclose(file);
+    return;
+  }
   fclose(file);
 
   struct FileMagnet *magnet = parse_magnet_from_uri(contents, size);
@@ -155,7 +176,6 @@ void cli_upload_file() {
     }
 
     char *magnet_uri = save_magnet_to_uri(magnet);
-    log_msg(LOG_DEBUG, "magnet->display_name = %s", magnet->display_name);
 
     // Allocate new filename with ".torrent" appended
     const char suffix[] = ".torrent";

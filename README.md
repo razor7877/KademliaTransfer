@@ -21,5 +21,5 @@ docker-compose down -v
 
 Start a single interactive node
 ```
-docker run -it --rm --network kademliatransfer_kadnet -p 8182:8182 -p 8183:8183 --name manual_node -v $(pwd)/files:/app/files mynode
+docker run -it --rm --network kademliatransfer_kadnet --name manual_node -v $(pwd)/files:/app/files mynode
 ```

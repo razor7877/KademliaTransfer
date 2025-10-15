@@ -196,16 +196,32 @@ int download_http_file(const struct Peer *peer, struct FileMagnet *file) {
   }
 
   char buffer[CHUNK_SIZE];
-  ssize_t received;
+  while (content_length > 0) {
+    ssize_t to_recv =
+        content_length < sizeof(buffer) ? content_length : sizeof(buffer);
+    ssize_t n = recv(peer_fd, buffer, to_recv, 0);
 
-  while ((received = recv(peer_fd, buffer, sizeof(buffer), 0)) > 0)
-    fwrite(buffer, 1, received, new_file);
+    if (n < 0) {
+      if (errno == EINTR)
+        continue;
+      if (errno == EAGAIN || errno == EWOULDBLOCK)
+        continue;
+      log_msg(LOG_ERROR, "recv error: %s", strerror(errno));
+      fclose(new_file);
+      close(peer_fd);
+      return -1;
+    }
 
-  if (received < 0)
-    log_msg(LOG_ERROR, "Error while receiving file: %s", strerror(errno));
+    if (n == 0)
+      break;
+
+    fwrite(buffer, 1, n, new_file);
+    content_length -= n;
+  }
 
   fclose(new_file);
   close(peer_fd);
+  log_msg(LOG_INFO, "Downloaded file saved to: %s", file_path);
 
   return 0;
 }

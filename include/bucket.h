@@ -34,7 +34,7 @@ typedef struct DList Buckets[BUCKET_COUNT];
  * @return struct Peer** Returns an array of struct Peer*, entries are filled
  * out with NULL if less than n peers were found
  */
-struct Peer **find_closest_peers(Buckets buckets, HashID target, int n);
+struct Peer **find_closest_peers(Buckets buckets, const HashID target, int n);
 
 /**
  * @brief Updates the peers in our buckets, should be called whenever we

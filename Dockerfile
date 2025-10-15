@@ -38,4 +38,4 @@ EXPOSE 8182
 EXPOSE 8183
 
 # Run the client, passing the node name as an argument
-ENTRYPOINT ["./KademliaClient"]
+# ENTRYPOINT ["./KademliaClient"]

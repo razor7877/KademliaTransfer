@@ -137,7 +137,7 @@ int min(const int a, const int b) { return (a < b) ? a : b; }
 void pointer_not_null(void *ptr, const char *message) {
   if (!ptr) {
     log_msg(LOG_ERROR, message);
-    exit(EXIT_FAILURE);
+    // exit(EXIT_FAILURE);
   }
 }
 

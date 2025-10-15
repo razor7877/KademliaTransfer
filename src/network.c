@@ -34,7 +34,7 @@ static int listen_fd = 0;
 static int broad_fd = 0;
 static void broadcast_discovery_request(void);
 static struct Schedule tasks[] = {
-    {"broadcast_discovery", 0, 1.0, broadcast_discovery_request},
+    {"broadcast_discovery", 0, 30.0, broadcast_discovery_request},
     {NULL, 0, 0, NULL}};
 
 int get_rpc_request(struct pollfd *sock, char *buf, size_t *out_size) {
@@ -454,7 +454,7 @@ int connect_to_peer(const struct sockaddr_in *addr) {
 
   // Set timeouts so we dont entirely block the client if the peer doesn't
   // respond
-  struct timeval timeout = {.tv_sec = 3, .tv_usec = 0};
+  struct timeval timeout = {.tv_sec = 10, .tv_usec = 0};
   setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
   setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
 

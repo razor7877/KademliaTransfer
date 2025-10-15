@@ -28,7 +28,7 @@ static int get_bucket_index(HashID distance) {
   return -1;
 };
 
-struct Peer **find_closest_peers(Buckets buckets, HashID target, int n) {
+struct Peer **find_closest_peers(Buckets buckets, const HashID target, int n) {
   // log_msg(LOG_DEBUG, "Searching for %d closest peers to ")
   struct Peer **result = calloc(n, sizeof(struct Peer *));
   pointer_not_null(result, "find_closest_peers malloc error");

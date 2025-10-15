@@ -10,7 +10,7 @@
 #define FILE_BLOCK_SIZE 4096
 #define SHA256_BLOCK_SIZE 4096
 
-#define K_VALUE 2
+#define K_VALUE 4
 
 struct Peer;
 

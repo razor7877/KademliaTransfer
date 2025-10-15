@@ -10,7 +10,7 @@ services:
     networks:
       - kadnet
     deploy:
-      replicas: 20
+      replicas: 50
     stdin_open: false
     tty: false
     environment:

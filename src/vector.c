@@ -72,3 +72,25 @@ void vector_set(VectorPtr *vec, size_t index, void *elem) {
 
   vec->data[index] = elem;
 }
+
+void vector_sort(VectorPtr *vec, VectorCmpFunc cmp, const void *userdata) {
+  if (!vec || !cmp || vec->size < 2)
+    return;
+
+  // Stable bubble sort
+  for (size_t i = 0; i < vec->size - 1; i++) {
+    for (size_t j = 0; j < vec->size - 1 - i; j++) {
+      void *a = vec->data[j];
+      void *b = vec->data[j + 1];
+
+      if (!a || !b)
+        continue;
+
+      if (!cmp(a, b, userdata)) { // if a > b, swap
+        void *tmp = vec->data[j];
+        vec->data[j] = vec->data[j + 1];
+        vec->data[j + 1] = tmp;
+      }
+    }
+  }
+}
