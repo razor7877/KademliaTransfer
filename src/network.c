@@ -490,6 +490,7 @@ void stop_network()
   {
     close(sock_array[i].fd);
   }
+  stop_rpc();
 }
 
 int connect_to_peer(const struct sockaddr_in *addr)
