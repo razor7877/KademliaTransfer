@@ -11,6 +11,9 @@
 
 #define K_VALUE 4
 
+#define UPLOAD_DIR "./upload"
+#define DOWNLOAD_DIR "./download"
+
 struct Peer;
 
 /**

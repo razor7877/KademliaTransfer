@@ -29,7 +29,8 @@ static void handle_ping(const struct pollfd *sock, struct RPCPing *data) {
   send_all(sock->fd, &response, sizeof(response));
 }
 
-static void handle_store(const struct pollfd *sock, const struct RPCStore *data) {
+static void handle_store(const struct pollfd *sock,
+                         const struct RPCStore *data) {
   log_msg(LOG_DEBUG, "Handling RPC store");
 
   struct KeyValuePair kvp;
@@ -45,7 +46,8 @@ static void handle_store(const struct pollfd *sock, const struct RPCStore *data)
   send_all(sock->fd, &response, sizeof(response));
 }
 
-static void handle_find_node(const struct pollfd *sock, const struct RPCFind *data) {
+static void handle_find_node(const struct pollfd *sock,
+                             const struct RPCFind *data) {
   log_msg(LOG_DEBUG, "Handling RPC find node");
 
   struct RPCFindNodeResponse response = {
@@ -141,7 +143,8 @@ static void handle_find_value(const struct pollfd *sock, struct RPCFind *data) {
   free(closest);
 }
 
-static void handle_broadcast(const struct pollfd *sock, const struct RPCBroadcast *data) {
+static void handle_broadcast(const struct pollfd *sock,
+                             const struct RPCBroadcast *data) {
   struct Peer peer;
   // Get the peer object back
   deserialize_rpc_peer(&data->peer, &peer);
@@ -412,7 +415,8 @@ static int iterative_find_peers(const HashID target_key,
   return (find_value && !value_found) ? -1 : 0;
 }
 
-void handle_rpc_request(const struct pollfd *sock, char *contents, size_t length) {
+void handle_rpc_request(const struct pollfd *sock, char *contents,
+                        size_t length) {
   size_t expected_size = 0;
 
   struct RPCMessageHeader *header = (struct RPCMessageHeader *)contents;
@@ -501,13 +505,58 @@ int handle_rpc_upload(struct FileMagnet *file) {
     return -1;
   }
 
-  struct RPCKeyValue serialized_kv = {0};
-  serialize_rpc_value(&kv, &serialized_kv);
+  char full_path[512] = {0};
+  snprintf(full_path, sizeof(full_path), "%s/%s", UPLOAD_DIR,
+           file->display_name);
 
+  FILE *file_handle = fopen(full_path, "r");
+  if (file_handle == NULL) {
+    log_msg(LOG_ERROR,
+            "File does not exist at path '%s'! The uploaded file should have "
+            "been copied there beforehand.\n",
+            full_path);
+    return -1;
+  }
+
+  // Get size, allocate memory and read contents into the buffer
+  fseek(file_handle, 0, SEEK_END);
+  long file_size = ftell(file_handle);
+  fseek(file_handle, 0, SEEK_SET);
+
+  void *file_contents = malloc(file_size);
+
+  fread(file_contents, file_size, 1, file_handle);
+  fclose(file_handle);
+
+  // Prepare the STORE request
   struct RPCStore store_req = {
       .header = {.magic_number = RPC_MAGIC,
                  .packet_size = sizeof(struct RPCStore),
                  .call_type = STORE}};
+
+  // Replicate at most K - 1 times since we already filled a slot with our info
+  for (int i = 0; i < K_VALUE - 1; i++) {
+    if (out_peers[i] == NULL)
+      continue;
+
+    log_msg(LOG_DEBUG, "Replicating file to closest peer %d with port %d", i,
+            ntohs(out_peers[i]->peer_addr.sin_port));
+
+    // We also do replication on these nodes
+    int res = upload_http_file(out_peers[i], file, file_contents, file_size);
+
+    if (res != 0) {
+      log_msg(LOG_ERROR, "Couldn't replicate file on remote peer");
+      continue;
+    }
+
+    // We successfully replicated to this peer, add them to the key-value pair
+    memcpy(&kv.values[kv.num_values], out_peers[i], sizeof(struct Peer));
+    kv.num_values++;
+  }
+
+  struct RPCKeyValue serialized_kv = {0};
+  serialize_rpc_value(&kv, &serialized_kv);
 
   memcpy(&store_req.key_value, &serialized_kv, sizeof(struct RPCKeyValue));
 
@@ -527,6 +576,7 @@ int handle_rpc_upload(struct FileMagnet *file) {
     }
 
     send_all(sock, &store_req, sizeof(store_req));
+
     close(sock);
   }
 
@@ -534,6 +584,7 @@ int handle_rpc_upload(struct FileMagnet *file) {
           "handle_rpc_upload finished propagating file key to peers");
 
   free_peer_array(out_peers, K_VALUE);
+  free(file_contents);
 
   return 0;
 }

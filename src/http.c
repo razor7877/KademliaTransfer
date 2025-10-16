@@ -13,8 +13,6 @@
 #include "peer.h"
 #include "shared.h"
 
-#define UPLOAD_DIR "./upload"
-
 static const char *not_found = "HTTP/1.1 404 Not Found\r\n"
                                "Content-Type: text/plain\r\n"
                                "Content-Length: 13\r\n"
@@ -24,9 +22,16 @@ static const char *not_found = "HTTP/1.1 404 Not Found\r\n"
 static const char *method_not_allowed = "HTTP/1.1 405 Method Not Allowed\r\n"
                                         "Content-Type: text/plain\r\n"
                                         "Content-Length: 23\r\n"
-                                        "Allow: GET\r\n"
+                                        "Allow: GET, PUT\r\n"
                                         "\r\n"
                                         "405 Method Not Allowed";
+
+static const char *file_created = "HTTP/1.1 201 Created\r\n"
+                                  "Content-Type: text/plain\r\n"
+                                  "Content-Length: 24\r\n"
+                                  "Connection: close\r\n"
+                                  "\r\n"
+                                  "File uploaded successfully";
 
 /**
  * @brief Sends a file back over HTTP
@@ -70,30 +75,108 @@ static void send_http_file(const struct pollfd *sock, const char *filename) {
   fclose(file);
 }
 
-static void receive_http_file(struct pollfd *sock, const char *filename) {}
+static void receive_http_file(const struct pollfd *sock, const char *filename,
+                              const char *headers, size_t header_len) {
+  char full_path[512] = {0};
+  snprintf(full_path, sizeof(full_path), "%s/%s", UPLOAD_DIR, filename);
+
+  // Make sure upload directory exists
+  struct stat st = {0};
+  if (stat(UPLOAD_DIR, &st) == -1) {
+    if (mkdir(UPLOAD_DIR, 0755) == -1) {
+      log_msg(LOG_ERROR, "Failed to create upload directory: %s",
+              strerror(errno));
+      return;
+    }
+  }
+
+  const char *cl_hdr = strcasestr_portable(headers, "Content-Length:");
+  size_t content_length = 0;
+
+  if (!cl_hdr) {
+    log_msg(LOG_ERROR, "Missing Content-Length in PUT request");
+    return;
+  }
+
+  if (sscanf(cl_hdr, "Content-Length: %zu", &content_length) != 1) {
+    log_msg(LOG_ERROR, "Invalid Content-Length in PUT request");
+    return;
+  }
+
+  log_msg(LOG_INFO, "Receiving file '%s' (%zu bytes)", filename,
+          content_length);
+
+  FILE *file = fopen(full_path, "wb");
+  if (!file) {
+    log_msg(LOG_ERROR, "Cannot create file %s: %s", full_path, strerror(errno));
+    return;
+  }
+
+  char buffer[CHUNK_SIZE];
+  while (content_length > 0) {
+    const size_t to_recv =
+        content_length < sizeof(buffer) ? content_length : sizeof(buffer);
+    const ssize_t n = recv_all(sock->fd, buffer, to_recv);
+
+    if (n < 0) {
+      if (errno == EINTR)
+        continue;
+      if (errno == EAGAIN || errno == EWOULDBLOCK)
+        continue;
+      log_msg(LOG_ERROR, "recv error: %s", strerror(errno));
+      fclose(file);
+      return;
+    }
+
+    if (n == 0)
+      break;
+
+    fwrite(buffer, 1, n, file);
+    content_length -= n;
+  }
+
+  fclose(file);
+  log_msg(LOG_INFO, "File '%s' uploaded successfully", full_path);
+
+  // Send back success response
+  send_all(sock->fd, file_created, strlen(file_created));
+}
 
 void handle_http_request(const struct pollfd *sock, const char *contents,
                          size_t length) {
   log_msg(LOG_INFO, "Handling HTTP request\n");
 
-  if (memcmp(contents, "GET ", 4) != 0) {
-    send_all(sock->fd, method_not_allowed, strlen(method_not_allowed));
-    return;
-  }
-
   char path[256] = {0};
-  sscanf(contents, "GET %255s", path);
+  if (memcmp(contents, "GET ", 4) == 0) {
+    sscanf(contents, "GET %255s", path);
 
-  // Strip leading '/'
-  char *file_path = path + 1;
-  if (strlen(file_path) == 0) {
-    send_all(sock->fd, not_found, strlen(not_found));
-    return;
+    // Strip leading '/'
+    char *file_path = path + 1;
+    if (strlen(file_path) == 0) {
+      send_all(sock->fd, not_found, strlen(not_found));
+      return;
+    }
+
+    log_msg(LOG_INFO, "GET Request file path: %s\n", file_path);
+
+    send_http_file(sock, file_path);
+  } else if (memcmp(contents, "PUT ", 4) == 0) {
+    sscanf(contents, "PUT %255s", path);
+
+    // Strip leading '/'
+    char *file_path = path + 1;
+    if (strlen(file_path) == 0) {
+      send_all(sock->fd, not_found, strlen(not_found));
+      return;
+    }
+
+    log_msg(LOG_INFO, "PUT Request file path: %s\n", file_path);
+
+    receive_http_file(sock, file_path, contents, length);
   }
 
-  log_msg(LOG_INFO, "Request file path: %s\n", file_path);
-
-  send_http_file(sock, file_path);
+  send_all(sock->fd, method_not_allowed, strlen(method_not_allowed));
+  return;
 }
 
 int download_http_file(const struct Peer *peer, const struct FileMagnet *file) {
@@ -161,7 +244,7 @@ int download_http_file(const struct Peer *peer, const struct FileMagnet *file) {
   log_msg(LOG_DEBUG, "Downloading HTTP file with size %zu", content_length);
 
   // Create the download folder if not already present
-  const char *download_dir = "./download";
+  const char *download_dir = DOWNLOAD_DIR;
   if (access(download_dir, F_OK) == -1) {
     if (mkdir(download_dir, 0755) == -1) {
       log_msg(LOG_ERROR, "Error creating download directory %s: %s",
@@ -213,5 +296,65 @@ int download_http_file(const struct Peer *peer, const struct FileMagnet *file) {
   close(peer_fd);
   log_msg(LOG_INFO, "Downloaded file saved to: %s", file_path);
 
+  return 0;
+}
+
+int upload_http_file(const struct Peer *peer, const struct FileMagnet *file,
+                     const char *contents, size_t length) {
+  if (!peer || !contents || length == 0) {
+    log_msg(LOG_ERROR, "upload_http_file: invalid arguments");
+    return -1;
+  }
+
+  // Connect to the peer
+  int sock = connect_to_peer(&peer->peer_addr);
+  if (sock < 0) {
+    log_msg(LOG_ERROR, "upload_http_file: cannot connect to peer");
+    return -1;
+  }
+
+  // Build PUT request header
+  char request_header[1024];
+  snprintf(request_header, sizeof(request_header),
+           "PUT /%s HTTP/1.1\r\n"
+           "Host: %s:%d\r\n"
+           "Content-Type: application/octet-stream\r\n"
+           "Content-Length: %zu\r\n"
+           "Connection: close\r\n\r\n",
+           file->display_name, // use peer->display_name as filename
+           inet_ntoa(peer->peer_addr.sin_addr), // peer IP
+           ntohs(peer->peer_addr.sin_port), length);
+
+  // Send header
+  if (send_all(sock, request_header, strlen(request_header)) < 0) {
+    log_msg(LOG_ERROR, "upload_http_file: failed to send header");
+    close(sock);
+    return -1;
+  }
+
+  // Send file contents
+  if (send_all(sock, contents, length) < 0) {
+    log_msg(LOG_ERROR, "upload_http_file: failed to send file data");
+    close(sock);
+    return -1;
+  }
+
+  // Receive response
+  char response[256] = {0};
+  ssize_t n = recv(sock, response, sizeof(response) - 1, 0);
+  if (n <= 0) {
+    log_msg(LOG_ERROR, "upload_http_file: no response from peer");
+    close(sock);
+    return -1;
+  }
+
+  response[n] = '\0';
+  if (strstr(response, "201 Created")) {
+    log_msg(LOG_INFO, "upload_http_file: file uploaded successfully");
+  } else {
+    log_msg(LOG_WARN, "upload_http_file: unexpected response: %s", response);
+  }
+
+  close(sock);
   return 0;
 }

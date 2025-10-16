@@ -18,10 +18,10 @@
 #include "command.h"
 #include "http.h"
 #include "log.h"
+#include "peer.h"
 #include "rpc.h"
 #include "schedule.h"
 #include "shared.h"
-#include "peer.h"
 
 #define MAX_WAIT_CON 5
 #define MAX_SOCK 128

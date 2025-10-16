@@ -148,9 +148,6 @@ void cli_upload_file() {
     return;
   }
 
-  int res = upload_file(magnet);
-  free(contents);
-
   // Create the upload directory if not already present
   const char upload_dir[] = "./upload";
   if (access(upload_dir, F_OK) == -1) {
@@ -162,17 +159,20 @@ void cli_upload_file() {
     }
   }
 
+  char new_path[512 + sizeof(upload_dir)] = {0};
+  snprintf(new_path, sizeof(new_path), "%s/%s", upload_dir, filename);
+  if (copy_file(input_path, new_path) != 0) {
+    log_msg(LOG_WARN, "Could not copy uploaded file to %s: %s", new_path,
+            strerror(errno));
+  } else {
+    log_msg(LOG_INFO, "Copied uploaded file to: %s", new_path);
+  }
+
+  int res = upload_file(magnet);
+  free(contents);
+
   if (res == 0) {
     log_msg(LOG_INFO, "File successfully uploaded!\n");
-
-    char new_path[512 + sizeof(upload_dir)] = {0};
-    snprintf(new_path, sizeof(new_path), "%s/%s", upload_dir, filename);
-    if (copy_file(input_path, new_path) != 0) {
-      log_msg(LOG_WARN, "Could not copy uploaded file to %s: %s", new_path,
-              strerror(errno));
-    } else {
-      log_msg(LOG_INFO, "Copied uploaded file to: %s", new_path);
-    }
 
     char *magnet_uri = save_magnet_to_uri(magnet);
 
