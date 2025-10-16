@@ -786,3 +786,24 @@ void handle_rpc_refresh_bucket()
   //   }
   // }
 }
+
+/**
+ * @brief Free the peer and the node allocated in RPC stack
+ *
+ */
+void stop_rpc()
+{
+  for (int i = 0; i < BUCKET_COUNT; i++)
+  {
+    struct DNode *curr = buckets[i].head;
+    struct DNode *prev = {0};
+    while (curr != NULL)
+    {
+      prev = curr;
+      curr = curr->next;
+      if (prev->peer)
+        free(prev->peer);
+      free(prev);
+    }
+  }
+}

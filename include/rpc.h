@@ -142,3 +142,9 @@ int handle_rpc_download(struct FileMagnet *file);
  *
  */
 void handle_rpc_refresh_bucket();
+
+/**
+ * @brief Free the peer and the node allocated in RPC stack
+ *
+ */
+void stop_rpc();
