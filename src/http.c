@@ -33,6 +33,21 @@ static const char *file_created = "HTTP/1.1 201 Created\r\n"
                                   "\r\n"
                                   "File uploaded successfully";
 
+static const char *internal_server_error =
+    "HTTP/1.1 500 Internal Server Error\r\n"
+    "Content-Type: text/plain\r\n"
+    "Content-Length: 21\r\n"
+    "Connection: close\r\n"
+    "\r\n"
+    "Internal Server Error";
+
+static const char *bad_request = "HTTP/1.1 400 Bad Request\r\n"
+                                 "Content-Type: text/plain\r\n"
+                                 "Content-Length: 12\r\n"
+                                 "Connection: close\r\n"
+                                 "\r\n"
+                                 "Bad Request";
+
 /**
  * @brief Sends a file back over HTTP
  *
@@ -86,6 +101,7 @@ static void receive_http_file(const struct pollfd *sock, const char *filename,
     if (mkdir(UPLOAD_DIR, 0755) == -1) {
       log_msg(LOG_ERROR, "Failed to create upload directory: %s",
               strerror(errno));
+      send_all(sock->fd, internal_server_error, strlen(internal_server_error));
       return;
     }
   }
@@ -95,11 +111,13 @@ static void receive_http_file(const struct pollfd *sock, const char *filename,
 
   if (!cl_hdr) {
     log_msg(LOG_ERROR, "Missing Content-Length in PUT request");
+    send_all(sock->fd, bad_request, strlen(bad_request));
     return;
   }
 
   if (sscanf(cl_hdr, "Content-Length: %zu", &content_length) != 1) {
     log_msg(LOG_ERROR, "Invalid Content-Length in PUT request");
+    send_all(sock->fd, bad_request, strlen(bad_request));
     return;
   }
 
@@ -109,6 +127,7 @@ static void receive_http_file(const struct pollfd *sock, const char *filename,
   FILE *file = fopen(full_path, "wb");
   if (!file) {
     log_msg(LOG_ERROR, "Cannot create file %s: %s", full_path, strerror(errno));
+    send_all(sock->fd, internal_server_error, strlen(internal_server_error));
     return;
   }
 
@@ -123,6 +142,8 @@ static void receive_http_file(const struct pollfd *sock, const char *filename,
         continue;
       if (errno == EAGAIN || errno == EWOULDBLOCK)
         continue;
+
+      send_all(sock->fd, internal_server_error, strlen(internal_server_error));
       log_msg(LOG_ERROR, "recv error: %s", strerror(errno));
       fclose(file);
       return;
