@@ -38,7 +38,7 @@ const struct KeyValuePair *storage_get_value(HashID key);
  *
  * @param value The key-value pair to be stored into the client storage
  */
-void storage_put_value(struct KeyValuePair *value);
+void storage_put_value(const struct KeyValuePair *value);
 
 /**
  * @brief Serializes a KeyValuePair to a RPCKeyValue

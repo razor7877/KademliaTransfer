@@ -1,9 +1,7 @@
 #pragma once
 
-#include <arpa/inet.h>
 #include <netinet/in.h>
 #include <openssl/evp.h>
-#include <openssl/sha.h>
 
 #include "shared.h"
 

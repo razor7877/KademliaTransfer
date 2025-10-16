@@ -3,11 +3,14 @@
 #include <ctype.h>
 #include <errno.h>
 #include <poll.h>
+#define _GNU_SOURCE
+#include <arpa/inet.h>
 #include <string.h>
 #include <sys/stat.h>
 
 #include "log.h"
 #include "network.h"
+#include "peer.h"
 #include "shared.h"
 
 #define UPLOAD_DIR "./upload"
@@ -31,7 +34,7 @@ static const char *method_not_allowed = "HTTP/1.1 405 Method Not Allowed\r\n"
  * @param sock The peer socket to which to send the file
  * @param filename The name of the file to send
  */
-static void send_http_file(struct pollfd *sock, const char *filename) {
+static void send_http_file(const struct pollfd *sock, const char *filename) {
   char full_path[512] = {0};
   snprintf(full_path, sizeof(full_path), "%s/%s", UPLOAD_DIR, filename);
 
@@ -67,7 +70,10 @@ static void send_http_file(struct pollfd *sock, const char *filename) {
   fclose(file);
 }
 
-void handle_http_request(struct pollfd *sock, char *contents, size_t length) {
+static void receive_http_file(struct pollfd *sock, const char *filename) {}
+
+void handle_http_request(const struct pollfd *sock, const char *contents,
+                         size_t length) {
   log_msg(LOG_INFO, "Handling HTTP request\n");
 
   if (memcmp(contents, "GET ", 4) != 0) {
@@ -90,25 +96,7 @@ void handle_http_request(struct pollfd *sock, char *contents, size_t length) {
   send_http_file(sock, file_path);
 }
 
-static char *strcasestr_portable(const char *haystack, const char *needle) {
-  if (!*needle)
-    return (char *)haystack;
-
-  for (; *haystack; haystack++) {
-    const char *h = haystack;
-    const char *n = needle;
-    while (*h && *n &&
-           tolower((unsigned char)*h) == tolower((unsigned char)*n)) {
-      h++;
-      n++;
-    }
-    if (!*n)
-      return (char *)haystack;
-  }
-  return NULL;
-}
-
-int download_http_file(const struct Peer *peer, struct FileMagnet *file) {
+int download_http_file(const struct Peer *peer, const struct FileMagnet *file) {
   if (!peer) {
     log_msg(LOG_ERROR, "Error in download_http_file peer is null!");
     return -1;
@@ -135,14 +123,14 @@ int download_http_file(const struct Peer *peer, struct FileMagnet *file) {
 
   char http_header[HTTP_HEADER_SIZE] = {0};
 
-  int bytes_send = send_all(peer_fd, request, strlen(request));
+  ssize_t bytes_send = send_all(peer_fd, request, strlen(request));
   if (bytes_send < 0) {
     log_msg(LOG_ERROR, "Error in download http_file 0 bytes send!");
     close(peer_fd);
     return -1;
   }
 
-  int header_bytes_read =
+  ssize_t header_bytes_read =
       recv_until(peer_fd, http_header, sizeof(http_header), "\r\n\r\n", 4);
   if (header_bytes_read <= 0) {
     log_msg(LOG_ERROR, "Error in download http_file response is empty");
@@ -167,7 +155,9 @@ int download_http_file(const struct Peer *peer, struct FileMagnet *file) {
     return -1;
   }
 
-  sscanf(content_length_buf, "Content-Length: %zu", &content_length);
+  if (sscanf(content_length_buf, "Content-Length: %zu", &content_length) != 1) {
+    log_msg(LOG_ERROR, "Error in download_http_file content length not found");
+  }
   log_msg(LOG_DEBUG, "Downloading HTTP file with size %zu", content_length);
 
   // Create the download folder if not already present
@@ -197,9 +187,9 @@ int download_http_file(const struct Peer *peer, struct FileMagnet *file) {
 
   char buffer[CHUNK_SIZE];
   while (content_length > 0) {
-    ssize_t to_recv =
+    const size_t to_recv =
         content_length < sizeof(buffer) ? content_length : sizeof(buffer);
-    ssize_t n = recv(peer_fd, buffer, to_recv, 0);
+    const ssize_t n = recv(peer_fd, buffer, to_recv, 0);
 
     if (n < 0) {
       if (errno == EINTR)

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "list.h"
-#include "peer.h"
 #include "shared.h"
 
 /**
@@ -38,9 +37,9 @@ struct Peer **find_closest_peers(Buckets buckets, const HashID target, int n);
 
 /**
  * @brief Updates the peers in our buckets, should be called whenever we
- * interact we a potentially new peer
+ * interact with a potentially new peer
  *
- * @param bucket The buckets to updade peers with
+ * @param bucket The buckets to update peers with
  * @param peer The peer that was interacted with
  */
 void update_bucket_peers(Buckets bucket, struct Peer *peer);

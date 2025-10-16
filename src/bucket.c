@@ -1,10 +1,12 @@
 #include "bucket.h"
 
+#include <arpa/inet.h>
 #include <openssl/evp.h>
 #include <string.h>
 
 #include "list.h"
 #include "log.h"
+#include "peer.h"
 #include "shared.h"
 
 /**
@@ -14,7 +16,7 @@
  * @return int Returns the bucket to choose for this distance, or -1 if the node
  * is ourselves
  */
-static int get_bucket_index(HashID distance)
+static int get_bucket_index(const HashID distance)
 {
   for (int byte = 0; byte < sizeof(HashID); byte++)
   {
@@ -32,9 +34,8 @@ static int get_bucket_index(HashID distance)
   return -1;
 };
 
-struct Peer **find_closest_peers(Buckets buckets, HashID target, int n)
+struct Peer **find_closest_peers(Buckets buckets, const HashID target, int n)
 {
-  // log_msg(LOG_DEBUG, "Searching for %d closest peers to ")
   struct Peer **result = calloc(n, sizeof(struct Peer *));
   pointer_not_null(result, "find_closest_peers malloc error");
 

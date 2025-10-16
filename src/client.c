@@ -3,7 +3,6 @@
 #include <stdatomic.h>
 #include <stdbool.h>
 #include <sys/types.h>
-#include <unistd.h>
 
 #include "client.h"
 #include "command.h"

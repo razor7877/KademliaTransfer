@@ -7,7 +7,7 @@
  * @file command.h
  * @brief Data structures and functions for implementation of a command queue
  *
- * This file contains sturctures and functions to create and manipulate a
+ * This file contains structures and functions to create and manipulate a
  * command queue. It is used for communication between the frontend and clients
  * thread. The frontend thread pushes commands to the queue whenever it needs
  * the client to do something.

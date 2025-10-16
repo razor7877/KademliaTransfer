@@ -1,5 +1,7 @@
 #include <pthread.h>
 #include <time.h>
+#include <stdio.h>
+#include <stdarg.h>
 
 #include "log.h"
 

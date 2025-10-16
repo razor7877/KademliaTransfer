@@ -50,7 +50,7 @@ int download_file(struct FileMagnet *file);
  * @brief Uploads a file to the P2P network
  *
  * @param file The file to be uploaded
- * @return int int 0 if the file was downloaded successfully, a negative number
+ * @return int Returns 0 if the file was downloaded successfully, a negative number
  * otherwise
  */
 int upload_file(struct FileMagnet *file);

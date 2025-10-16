@@ -1,4 +1,4 @@
-#include "rpc.h"
+#include <memory.h>
 
 #include <hash/hashmap.h>
 #include <memory.h>
@@ -52,7 +52,7 @@ static void handle_ping(struct pollfd *sock, struct RPCPing *data)
   send_all(sock->fd, &response, sizeof(response));
 }
 
-static void handle_store(struct pollfd *sock, struct RPCStore *data)
+static void handle_store(const struct pollfd *sock, struct RPCStore *data)
 {
   log_msg(LOG_DEBUG, "Handling RPC store");
 
@@ -81,7 +81,7 @@ static void handle_store(struct pollfd *sock, struct RPCStore *data)
   send_all(sock->fd, &response, sizeof(response));
 }
 
-static void handle_find_node(struct pollfd *sock, struct RPCFind *data)
+static void handle_find_node(const struct pollfd *sock, struct RPCFind *data)
 {
   log_msg(LOG_DEBUG, "Handling RPC find node");
   handle_update_peer(&data->header.peer);
@@ -124,7 +124,7 @@ static void handle_find_node(struct pollfd *sock, struct RPCFind *data)
     if (closest[i] == NULL)
       continue;
 
-    found = i;
+    found++;
     serialize_rpc_peer(closest[i], &response.closest[i]);
   }
 
@@ -134,7 +134,7 @@ static void handle_find_node(struct pollfd *sock, struct RPCFind *data)
   free(closest);
 }
 
-static void handle_find_value(struct pollfd *sock, struct RPCFind *data)
+static void handle_find_value(const struct pollfd *sock, struct RPCFind *data)
 {
   log_msg(LOG_DEBUG, "Handling RPC find value");
   handle_update_peer(&data->header.peer);
@@ -197,7 +197,7 @@ static void handle_find_value(struct pollfd *sock, struct RPCFind *data)
     if (closest[i] == NULL)
       continue;
 
-    found = i;
+    found++;
     serialize_rpc_peer(closest[i], &response.closest[i]);
   }
 
@@ -208,9 +208,22 @@ static void handle_find_value(struct pollfd *sock, struct RPCFind *data)
   free(closest);
 }
 
-static void handle_broadcast(struct pollfd *sock, struct RPCBroadcast *data)
+static void handle_broadcast(const struct pollfd *sock, struct RPCBroadcast *data)
 {
   handle_update_peer(&data->header.peer);
+}
+
+static bool peer_distance_cmp(void *a, void *b, const void *userdata)
+{
+  struct Peer *p1 = a;
+  struct Peer *p2 = b;
+
+  unsigned char *target = (unsigned char *)userdata;
+  HashID d1, d2;
+  dist_hash(d1, p1->peer_id, target);
+  dist_hash(d2, p2->peer_id, target);
+
+  return memcmp(d1, d2, sizeof(HashID)) < 0;
 }
 
 void handle_rpc_request(struct pollfd *sock, char *contents, size_t length)
@@ -280,19 +293,6 @@ void handle_rpc_request(struct pollfd *sock, char *contents, size_t length)
   default:
     break;
   }
-}
-
-static bool peer_distance_cmp(void *a, void *b, const void *userdata)
-{
-  struct Peer *p1 = a;
-  struct Peer *p2 = b;
-
-  unsigned char *target = (unsigned char *)userdata;
-  HashID d1, d2;
-  dist_hash(d1, p1->peer_id, target);
-  dist_hash(d2, p2->peer_id, target);
-
-  return memcmp(d1, d2, sizeof(HashID)) < 0;
 }
 
 /**

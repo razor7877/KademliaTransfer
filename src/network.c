@@ -8,7 +8,6 @@
 #include <poll.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -22,6 +21,7 @@
 #include "rpc.h"
 #include "schedule.h"
 #include "shared.h"
+#include "peer.h"
 
 #define MAX_WAIT_CON 5
 #define MAX_SOCK 128
@@ -38,7 +38,7 @@ static struct Schedule tasks[] = {
     {"refresh_bucket", 0, 900.0, handle_rpc_refresh_bucket},
     {NULL, 0, 0, NULL}};
 
-int get_rpc_request(struct pollfd *sock, char *buf, size_t *out_size)
+int get_rpc_request(const struct pollfd *sock, char *buf, size_t *out_size)
 {
   int sock_type = 0;
   socklen_t optlen = sizeof(sock_type);
@@ -121,9 +121,8 @@ int get_rpc_request(struct pollfd *sock, char *buf, size_t *out_size)
  *
  * @param sock The struct of the socket that sent the HTTP request
  * @param buf A pointer to the buffer where data can be read into
- * @param buf_index Current index into the buffer
  */
-static void get_http_request(struct pollfd *sock, char *buf)
+static void get_http_request(const struct pollfd *sock, char *buf)
 {
   log_msg(LOG_INFO, "Handling HTTP request");
 
@@ -170,7 +169,7 @@ static void broadcast_discovery_request(void)
   // Store the serialized peer in our request data
   serialize_rpc_peer(&peer, &request.header.peer);
 
-  // Broadcast a RPC ping packet to everyone with our info
+  // Broadcast an RPC ping packet to everyone with our info
   ssize_t sent = sendto(sock_array[1].fd, &request, sizeof(request), 0,
                         (struct sockaddr *)&server_addr, sizeof(server_addr));
 
@@ -209,7 +208,7 @@ static void handle_incoming()
       else
       {
         perror("Not enough space in buffer to allocate new connection");
-        close(sock_array[i].fd);
+        close(new_fd);
       }
     }
     else
@@ -469,7 +468,7 @@ void init_network()
 
 void update_network()
 {
-  int active_fd = poll(sock_array, MAX_SOCK, 50);
+  poll(sock_array, MAX_SOCK, 50);
 
   // Handle any pending commands from the frontend
   handle_pending();
@@ -508,7 +507,7 @@ int connect_to_peer(const struct sockaddr_in *addr)
     return -1;
   }
 
-  // Set timeouts so we dont entirely block the client if the peer doesn't
+  // Set timeouts so we don't entirely block the client if the peer doesn't
   // respond
   struct timeval timeout = {.tv_sec = 10, .tv_usec = 0};
   setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
