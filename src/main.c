@@ -7,7 +7,6 @@
 #include "client.h"
 #include "log.h"
 #include "peer.h"
-#include "rpc.h"
 
 #define INPUT_SIZE 256
 #define FILENAME_SIZE 512
@@ -217,7 +216,7 @@ void cli_show_network_status() { show_network_status(); }
 int main(int argc, char **argv) {
   if (start_client() != 0) {
     perror("P2P client didn't start properly");
-    exit(EXIT_FAILURE);
+    return -1;
   }
 
   bool disable_cli = false;
@@ -229,7 +228,7 @@ int main(int argc, char **argv) {
   if (!disable_cli) {
     bool running = true;
     char input[INPUT_SIZE] = {0};
-    int choice = -1;
+    int choice = 0;
 
     while (running) {
       printf("\n===== KademliaTransfer Menu =====\n");
@@ -248,7 +247,10 @@ int main(int argc, char **argv) {
 
       input[strcspn(input, "\n")] = '\00';
 
-      if (sscanf(input, "%d", &choice) != 1) {
+      char *end_ptr;
+      choice = (int)strtol(input, &end_ptr, 10);
+
+      if (end_ptr == input || *end_ptr != '\0') {
         log_msg(LOG_WARN, "Invalid input! Please enter a number.\n");
         continue;
       }

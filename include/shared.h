@@ -3,7 +3,6 @@
 #include <netinet/in.h>
 #include <openssl/evp.h>
 #include <openssl/sha.h>
-#include <stdio.h>
 #include <unistd.h>
 
 #define BUF_SIZE 16384
@@ -43,7 +42,7 @@ typedef unsigned char PubKey[32];
  * @param val The return value
  * @param str The message to display if there is an error
  */
-void die(int val, char *str);
+void die(int val, const char *str);
 
 /**
  * @brief Repeatedly reads from a file descriptor until all requested data is
@@ -52,7 +51,7 @@ void die(int val, char *str);
  * @param fd The file descriptor to read from
  * @param dst A buffer pointing to the memory where the data should be stored
  * @param len The number of bytes to be read
- * @return ssize_t Returns how many bytes were actually read
+ * @return size_t Returns how many bytes were actually read
  */
 ssize_t recv_all(int fd, void *dst, size_t len);
 
@@ -64,7 +63,7 @@ ssize_t recv_all(int fd, void *dst, size_t len);
  * @param fd The file descriptor to read from
  * @param dst A buffer pointing to the memory where the data should be stored
  * @param len The number of bytes to be read
- * @return ssize_t Returns how many bytes were actually read
+ * @return size_t Returns how many bytes were actually read
  */
 ssize_t recv_all_peek(int fd, void *dst, size_t len);
 
@@ -77,18 +76,18 @@ ssize_t recv_all_peek(int fd, void *dst, size_t len);
  * @param len The number of bytes to be read
  * @param pattern The pattern upon which reading should be stopped
  * @param pattern_len The length of the pattern
- * @return ssize_t Returns how many bytes were actually read
+ * @return size_t Returns how many bytes were actually read
  */
 ssize_t recv_until(int fd, void *dst, size_t len, const char *pattern,
                    size_t pattern_len);
 
 /**
- * @brief Repeatedely sends to a file descriptor until all request data is sent
+ * @brief Repeatedly sends to a file descriptor until all request data is sent
  * or there is an error
  * @param fd The file descriptor to send to
  * @param src A buffer pointing to the memory where the data should be read from
  * @param len The number of bytes to be sent
- * @return ssize_t Returns how many bytes were actually sent
+ * @return size_t Returns how many bytes were actually sent
  */
 ssize_t send_all(int fd, const void *src, size_t len);
 
@@ -123,8 +122,8 @@ int sha256_file(const char *filename, HashID id);
 /**
  * @brief Computes and store the SHA-256 hash of a buffer contents
  *
- * @param in_buf A buffer containing the contents for which a SHA-256 sum should
- * be computed
+ * @param in_buf A buffer containing the contents for which the SHA-256 sum
+ * should be computed
  * @param buf_size The size of the data to be hashed
  * @param out_buf A pointer to memory where the hash should be stored
  * @return int Returns 0 if the hash was computed successfully, a negative
@@ -167,9 +166,11 @@ int get_own_id(HashID out);
 int create_own_peer(struct Peer *out_peer);
 
 /**
- * @brief Converts a SHA-256 hash to a hex string.
+ * @brief Converts the SHA-256 hash to a hex string.
  *
  * @param hash Pointer to 32-byte hash
  * @param str_buf Buffer to hold hex string, must be at least 65 bytes
  */
 void sha256_to_hex(const HashID hash, char *str_buf);
+
+char *strcasestr_portable(const char *haystack, const char *needle);

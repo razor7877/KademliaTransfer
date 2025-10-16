@@ -1,6 +1,7 @@
 #include "shared.h"
 
 #include <arpa/inet.h>
+#include <ctype.h>
 #include <errno.h>
 #include <netinet/in.h>
 #include <openssl/sha.h>
@@ -13,7 +14,7 @@
 #include "log.h"
 #include "peer.h"
 
-void die(int val, char *str) {
+void die(int val, const char *str) {
   if (val < 0) {
     perror(str);
     exit(EXIT_FAILURE);
@@ -145,8 +146,8 @@ int sha256_file(const char *filename, HashID id) {
   FILE *file = fopen(filename, "rb");
   if (!file)
     return -1;
-  int bytes_read = 0;
-  int file_size = 0;
+  size_t bytes_read = 0;
+  size_t file_size = 0;
   unsigned char block[SHA256_BLOCK_SIZE];
 
   EVP_MD_CTX *ctx = EVP_MD_CTX_new();
@@ -303,7 +304,7 @@ int get_own_id(HashID out) {
 
   char hash_str[sizeof(HashID) * 2 + 1] = {0};
 
-  sha256_buf(ip, strlen(ip), own_id);
+  sha256_buf((unsigned char *)ip, strlen(ip), own_id);
   sha256_to_hex(own_id, hash_str);
 
   log_msg(LOG_DEBUG, "Client primary IP is: %s", ip);
@@ -322,7 +323,7 @@ int create_own_peer(struct Peer *out_peer) {
 
   memset(out_peer, 0, sizeof(struct Peer));
 
-  if (get_own_id(&out_peer->peer_id) != 0) {
+  if (get_own_id(out_peer->peer_id) != 0) {
     log_msg(LOG_ERROR, "create_own_peer: get_own_id error");
     return -1;
   }
@@ -343,4 +344,22 @@ void sha256_to_hex(const HashID hash, char *str_buf) {
     sprintf(str_buf + (i * 2), "%02x", hash[i]);
   }
   str_buf[sizeof(HashID) * 2] = '\0'; // null-terminate
+}
+
+char *strcasestr_portable(const char *haystack, const char *needle) {
+  if (!*needle)
+    return (char *)haystack;
+
+  for (; *haystack; haystack++) {
+    const char *h = haystack;
+    const char *n = needle;
+    while (*h && *n &&
+           tolower((unsigned char)*h) == tolower((unsigned char)*n)) {
+      h++;
+      n++;
+    }
+    if (!*n)
+      return (char *)haystack;
+  }
+  return NULL;
 }

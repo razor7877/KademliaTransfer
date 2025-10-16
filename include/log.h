@@ -1,8 +1,5 @@
 #pragma once
 
-#include <stdarg.h>
-#include <stdio.h>
-
 /**
  * @file log.h
  * @brief Helper functions for elegant message logging to the terminal

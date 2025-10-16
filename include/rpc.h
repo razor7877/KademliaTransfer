@@ -1,12 +1,8 @@
 #pragma once
 
 // Kademlia RPC functions implementation
-#include <arpa/inet.h>
-#include <openssl/sha.h>
 #include <poll.h>
-#include <stdbool.h>
 
-#include "bucket.h"
 #include "shared.h"
 
 struct FileMagnet;
@@ -111,10 +107,11 @@ struct RPCFindNodeResponse {
 /**
  * @brief Handles a RPC request
  *
+ * @param sock The socket that sent the RPC request
  * @param contents The RPC request packet
  * @param length The length of the RPC request
  */
-void handle_rpc_request(struct pollfd *sock, char *contents, size_t length);
+void handle_rpc_request(const struct pollfd *sock, char *contents, size_t length);
 
 /**
  * @brief Handles uploading a file to the P2P network

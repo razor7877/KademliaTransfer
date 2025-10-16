@@ -47,7 +47,7 @@ static bool storage_iter(const void *item, const void *udata) {
  * @param item The item to be hashed
  * @param seed0 The first hashmap seed
  * @param seed1 The second hashmap seed
- * @return uint64_t Returns a uint64_t hash of the item
+ * @return uint64_t Returns an uint64_t hash of the item
  */
 static uint64_t storage_hash(const void *item, uint64_t seed0, uint64_t seed1) {
   const struct KeyValuePair *pair = item;
@@ -79,7 +79,7 @@ const struct KeyValuePair *storage_get_value(HashID key) {
   return hashmap_get(storage_map, &find);
 }
 
-void storage_put_value(struct KeyValuePair *value) {
+void storage_put_value(const struct KeyValuePair *value) {
   if (!storage_ready)
     storage_init();
 

@@ -3,7 +3,6 @@
 #include <poll.h>
 #include <stddef.h>
 
-#include "bucket.h"
 #include "magnet.h"
 #include "shared.h"
 
@@ -22,10 +21,11 @@
 /**
  * @brief Handles a HTTP request
  *
+ * @param sock The socket that sent the HTTP request
  * @param contents The contents of the HTTP request
  * @param length The length of the HTTP packet
  */
-void handle_http_request(struct pollfd *sock, char *contents, size_t length);
+void handle_http_request(const struct pollfd *sock, const char *contents, size_t length);
 
 /**
  * @brief Downloads a file by hash from the HTTP server served by peer
@@ -34,4 +34,4 @@ void handle_http_request(struct pollfd *sock, char *contents, size_t length);
  * @param file The hash of the file to be downloaded
  * @return int 0 if it was successful, negative number otherwise
  */
-int download_http_file(const struct Peer *peer, struct FileMagnet *file);
+int download_http_file(const struct Peer *peer, const struct FileMagnet *file);

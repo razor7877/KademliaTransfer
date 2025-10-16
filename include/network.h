@@ -24,7 +24,7 @@
  * @param buf A pointer to the buffer where data can be read into
  * @param out_size A pointer to store the size of the packet that was read
  */
-int get_rpc_request(struct pollfd *sock, char *buf, size_t *out_size);
+int get_rpc_request(const struct pollfd *sock, char *buf, size_t *out_size);
 
 /**
  * @brief Initializes the network stack

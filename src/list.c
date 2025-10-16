@@ -115,7 +115,7 @@ int find_nearest(const struct DList *list, const HashID id,
 
   while (current != NULL) {
     HashID current_dist = {0};
-    dist_hash(&current_dist, &current->peer->peer_id, id);
+    dist_hash(current_dist, current->peer->peer_id, id);
 
     if (n < max_neighbors) {
       memcpy(&neighbors_dist[n], &current_dist, sizeof(HashID));
@@ -123,7 +123,7 @@ int find_nearest(const struct DList *list, const HashID id,
       n += 1;
     } else {
       for (size_t i = 0; i < n; i++) {
-        if (compare_distance(&neighbors_dist[i], &current_dist) > 0) {
+        if (compare_distance(neighbors_dist[i], current_dist) > 0) {
           out_peers[i] = current->peer;
           memcpy(&neighbors_dist[i], &current_dist, sizeof(HashID));
         }

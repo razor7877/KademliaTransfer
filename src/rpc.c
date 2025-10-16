@@ -1,5 +1,4 @@
 #include <memory.h>
-#include <poll.h>
 
 #include <hash/hashmap.h>
 
@@ -18,7 +17,7 @@
  */
 static Buckets buckets = {0};
 
-static void handle_ping(struct pollfd *sock, struct RPCPing *data) {
+static void handle_ping(const struct pollfd *sock, struct RPCPing *data) {
   log_msg(LOG_DEBUG, "Handling RPC ping");
 
   struct RPCResponse response = {
@@ -30,7 +29,7 @@ static void handle_ping(struct pollfd *sock, struct RPCPing *data) {
   send_all(sock->fd, &response, sizeof(response));
 }
 
-static void handle_store(struct pollfd *sock, struct RPCStore *data) {
+static void handle_store(const struct pollfd *sock, const struct RPCStore *data) {
   log_msg(LOG_DEBUG, "Handling RPC store");
 
   struct KeyValuePair kvp;
@@ -46,7 +45,7 @@ static void handle_store(struct pollfd *sock, struct RPCStore *data) {
   send_all(sock->fd, &response, sizeof(response));
 }
 
-static void handle_find_node(struct pollfd *sock, struct RPCFind *data) {
+static void handle_find_node(const struct pollfd *sock, const struct RPCFind *data) {
   log_msg(LOG_DEBUG, "Handling RPC find node");
 
   struct RPCFindNodeResponse response = {
@@ -74,7 +73,7 @@ static void handle_find_node(struct pollfd *sock, struct RPCFind *data) {
     if (closest[i] == NULL)
       continue;
 
-    found = i;
+    found++;
     serialize_rpc_peer(closest[i], &response.closest[i]);
   }
 
@@ -85,7 +84,7 @@ static void handle_find_node(struct pollfd *sock, struct RPCFind *data) {
   free(closest);
 }
 
-static void handle_find_value(struct pollfd *sock, struct RPCFind *data) {
+static void handle_find_value(const struct pollfd *sock, struct RPCFind *data) {
   log_msg(LOG_DEBUG, "Handling RPC find value");
 
   struct RPCFindValueResponse response = {
@@ -131,7 +130,7 @@ static void handle_find_value(struct pollfd *sock, struct RPCFind *data) {
     if (closest[i] == NULL)
       continue;
 
-    found = i;
+    found++;
     serialize_rpc_peer(closest[i], &response.closest[i]);
   }
 
@@ -142,7 +141,7 @@ static void handle_find_value(struct pollfd *sock, struct RPCFind *data) {
   free(closest);
 }
 
-static void handle_broadcast(struct pollfd *sock, struct RPCBroadcast *data) {
+static void handle_broadcast(const struct pollfd *sock, const struct RPCBroadcast *data) {
   struct Peer peer;
   // Get the peer object back
   deserialize_rpc_peer(&data->peer, &peer);
@@ -183,6 +182,7 @@ static void free_peer_array(struct Peer **peers, size_t count) {
  *
  * @param target_key The key to find the closest peers to
  * @param out_peers Points to a vector that will store the most suitable peers
+ * @param max_peers How many peers should be returned at most
  * @param find_value FIND_VALUE or FIND_NODE RPC requests
  * @return int Returns 0 if the search was successful, a negative number
  * otherwise
@@ -412,7 +412,7 @@ static int iterative_find_peers(const HashID target_key,
   return (find_value && !value_found) ? -1 : 0;
 }
 
-void handle_rpc_request(struct pollfd *sock, char *contents, size_t length) {
+void handle_rpc_request(const struct pollfd *sock, char *contents, size_t length) {
   size_t expected_size = 0;
 
   struct RPCMessageHeader *header = (struct RPCMessageHeader *)contents;

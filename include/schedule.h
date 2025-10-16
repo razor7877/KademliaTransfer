@@ -1,7 +1,5 @@
 #pragma once
 
-#include <time.h>
-
 /**
  * @file schedule.h
  * @brief This file defines structures for schedule task
