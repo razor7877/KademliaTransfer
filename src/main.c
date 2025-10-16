@@ -11,21 +11,25 @@
 #define INPUT_SIZE 256
 #define FILENAME_SIZE 512
 
-static int copy_file(const char *src_path, const char *dest_path) {
+static int copy_file(const char *src_path, const char *dest_path)
+{
   FILE *src = fopen(src_path, "rb");
   if (!src)
     return -1;
 
   FILE *dest = fopen(dest_path, "wb");
-  if (!dest) {
+  if (!dest)
+  {
     fclose(src);
     return -1;
   }
 
   char buffer[BUF_SIZE];
   size_t bytes;
-  while ((bytes = fread(buffer, 1, sizeof(buffer), src)) > 0) {
-    if (fwrite(buffer, 1, bytes, dest) != bytes) {
+  while ((bytes = fread(buffer, 1, sizeof(buffer), src)) > 0)
+  {
+    if (fwrite(buffer, 1, bytes, dest) != bytes)
+    {
       fclose(src);
       fclose(dest);
       return -1;
@@ -37,7 +41,8 @@ static int copy_file(const char *src_path, const char *dest_path) {
   return 0;
 }
 
-void cli_download_file() {
+void cli_download_file()
+{
   char magnet_link[FILENAME_SIZE] = {0};
 
   printf("Enter filename of magnet to download: ");
@@ -48,19 +53,22 @@ void cli_download_file() {
   magnet_link[strcspn(magnet_link, "\n")] = '\0';
 
   struct stat st;
-  if (stat(magnet_link, &st) != 0) {
+  if (stat(magnet_link, &st) != 0)
+  {
     log_msg(LOG_ERROR, "File does not exist! Please entir valid filename.");
     return;
   }
 
-  if (S_ISDIR(st.st_mode)) {
+  if (S_ISDIR(st.st_mode))
+  {
     log_msg(LOG_ERROR, "Can't open directory as file");
     return;
   }
 
   // Load magnet file contents from disk
   FILE *file = fopen(magnet_link, "r");
-  if (file == NULL) {
+  if (file == NULL)
+  {
     log_msg(LOG_ERROR, "File does not exist! Please enter valid filename.");
     return;
   }
@@ -69,7 +77,8 @@ void cli_download_file() {
   fseek(file, 0, SEEK_END);
   long size = ftell(file);
 
-  if (size < 0) {
+  if (size < 0)
+  {
     log_msg(LOG_ERROR, "Invalid file size or ftell failed");
     fclose(file);
     return;
@@ -77,10 +86,11 @@ void cli_download_file() {
 
   fseek(file, 0, SEEK_SET);
 
-  void *contents = malloc((size_t)size);
+  void *contents = malloc((size_t)size + 1);
   pointer_not_null(contents, "cli_download_file malloc error");
 
-  if (fread(contents, 1, size, file) != (size_t)size) {
+  if (fread(contents, 1, size, file) != (size_t)size)
+  {
     log_msg(LOG_ERROR, "Couldn't read entire file from disk - read %zu", read);
     fclose(file);
     return;
@@ -91,7 +101,8 @@ void cli_download_file() {
 
   free(contents);
 
-  if (magnet == NULL) {
+  if (magnet == NULL)
+  {
     log_msg(LOG_ERROR, "Error while parsing magnet link contents! Please use a "
                        "valid magnet file.\n");
     return;
@@ -100,15 +111,19 @@ void cli_download_file() {
   int res = download_file(magnet);
   free_magnet(magnet);
 
-  if (res == 0) {
+  if (res == 0)
+  {
     log_msg(LOG_INFO, "File successfully downloaded!\n");
-  } else {
+  }
+  else
+  {
     log_msg(LOG_ERROR,
             "Error while trying to download the file! Error code: %d\n", res);
   }
 }
 
-void cli_upload_file() {
+void cli_upload_file()
+{
   char input_path[FILENAME_SIZE] = {0};
 
   printf("Enter filename to upload (with optional path): ");
@@ -123,7 +138,8 @@ void cli_upload_file() {
   filename = (filename) ? filename + 1 : input_path;
 
   FILE *file = fopen(input_path, "r");
-  if (file == NULL) {
+  if (file == NULL)
+  {
     log_msg(
         LOG_ERROR,
         "File does not exist at path '%s'! Please enter a valid filename.\n",
@@ -143,7 +159,8 @@ void cli_upload_file() {
 
   struct FileMagnet *magnet = create_magnet(input_path, strlen(input_path));
 
-  if (magnet == NULL) {
+  if (magnet == NULL)
+  {
     log_msg(LOG_ERROR, "Error while trying to create magnet link!\n");
     return;
   }
@@ -153,8 +170,10 @@ void cli_upload_file() {
 
   // Create the upload directory if not already present
   const char upload_dir[] = "./upload";
-  if (access(upload_dir, F_OK) == -1) {
-    if (mkdir(upload_dir, 0755) == -1) {
+  if (access(upload_dir, F_OK) == -1)
+  {
+    if (mkdir(upload_dir, 0755) == -1)
+    {
       log_msg(LOG_ERROR, "Failed to create upload directory %s: %s", upload_dir,
               strerror(errno));
       free_magnet(magnet);
@@ -162,15 +181,19 @@ void cli_upload_file() {
     }
   }
 
-  if (res == 0) {
+  if (res == 0)
+  {
     log_msg(LOG_INFO, "File successfully uploaded!\n");
 
     char new_path[512 + sizeof(upload_dir)] = {0};
     snprintf(new_path, sizeof(new_path), "%s/%s", upload_dir, filename);
-    if (copy_file(input_path, new_path) != 0) {
+    if (copy_file(input_path, new_path) != 0)
+    {
       log_msg(LOG_WARN, "Could not copy uploaded file to %s: %s", new_path,
               strerror(errno));
-    } else {
+    }
+    else
+    {
       log_msg(LOG_INFO, "Copied uploaded file to: %s", new_path);
     }
 
@@ -185,7 +208,8 @@ void cli_upload_file() {
     log_msg(LOG_INFO, "Saving following magnet URI: %s", magnet_uri);
 
     FILE *magnet_file = fopen(magnet_filename, "w+");
-    if (!magnet_file) {
+    if (!magnet_file)
+    {
       log_msg(LOG_ERROR, "Error creating magnet file %s: %s", magnet_filename,
               strerror(errno));
       free(magnet_uri);
@@ -203,7 +227,9 @@ void cli_upload_file() {
               magnet_filename, strerror(errno));
     else
       log_msg(LOG_INFO, "Magnet file saved to: %s", magnet_filename);
-  } else {
+  }
+  else
+  {
     log_msg(LOG_ERROR,
             "Error while trying to upload the file! Error code: %d\n", res);
   }
@@ -213,24 +239,29 @@ void cli_upload_file() {
 
 void cli_show_network_status() { show_network_status(); }
 
-int main(int argc, char **argv) {
-  if (start_client() != 0) {
+int main(int argc, char **argv)
+{
+  if (start_client() != 0)
+  {
     perror("P2P client didn't start properly");
     return -1;
   }
 
   bool disable_cli = false;
   char *env = getenv("DISABLE_CLI");
-  if (env && strcmp(env, "1") == 0) {
+  if (env && strcmp(env, "1") == 0)
+  {
     disable_cli = true;
   }
 
-  if (!disable_cli) {
+  if (!disable_cli)
+  {
     bool running = true;
     char input[INPUT_SIZE] = {0};
     int choice = 0;
 
-    while (running) {
+    while (running)
+    {
       printf("\n===== KademliaTransfer Menu =====\n");
       printf("1. Show network status\n");
       printf("2. Upload file\n");
@@ -238,7 +269,8 @@ int main(int argc, char **argv) {
       printf("4. Exit\n");
       printf("Enter your choice: ");
 
-      if (fgets(input, sizeof(input), stdin) == NULL) {
+      if (fgets(input, sizeof(input), stdin) == NULL)
+      {
         log_msg(LOG_WARN, "\nError reading input\n");
         continue;
       }
@@ -250,12 +282,14 @@ int main(int argc, char **argv) {
       char *end_ptr;
       choice = (int)strtol(input, &end_ptr, 10);
 
-      if (end_ptr == input || *end_ptr != '\0') {
+      if (end_ptr == input || *end_ptr != '\0')
+      {
         log_msg(LOG_WARN, "Invalid input! Please enter a number.\n");
         continue;
       }
 
-      switch (choice) {
+      switch (choice)
+      {
       case 1:
         cli_show_network_status();
         break;
@@ -278,9 +312,12 @@ int main(int argc, char **argv) {
         break;
       }
     }
-  } else {
+  }
+  else
+  {
     log_msg(LOG_INFO, "CLI disabled, running headless mode...\n");
-    while (1) {
+    while (1)
+    {
       // Might want to implement something better for graceful exits
       sleep(60);
     }

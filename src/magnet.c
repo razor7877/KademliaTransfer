@@ -4,7 +4,8 @@
 #include <regex.h>
 #include <string.h>
 
-struct FileMagnet *create_magnet(const char *filename, size_t filename_len) {
+struct FileMagnet *create_magnet(const char *filename, size_t filename_len)
+{
   if (!filename || filename_len < 1)
     return NULL;
   struct FileMagnet *new_magnet =
@@ -14,7 +15,8 @@ struct FileMagnet *create_magnet(const char *filename, size_t filename_len) {
 
   int contents_len =
       sha256_file(filename, (unsigned char *)&new_magnet->file_hash);
-  if (contents_len == -1) {
+  if (contents_len == -1)
+  {
     free_magnet(new_magnet);
     return NULL;
   }
@@ -42,7 +44,8 @@ struct FileMagnet *create_magnet(const char *filename, size_t filename_len) {
   return new_magnet;
 }
 
-char *save_magnet_to_uri(struct FileMagnet *magnet) {
+char *save_magnet_to_uri(struct FileMagnet *magnet)
+{
   if (!magnet)
     return NULL;
 
@@ -50,11 +53,13 @@ char *save_magnet_to_uri(struct FileMagnet *magnet) {
   size_t uri_size = strlen(base) + SHA256_DIGEST_LENGTH * 2 + 1;
   char file_size[32] = "";
 
-  if (magnet->exact_length > 0) {
+  if (magnet->exact_length > 0)
+  {
     sprintf(file_size, "%zu", magnet->exact_length);
     uri_size += strlen(file_size) + 4;
   }
-  if (magnet->display_name != NULL) {
+  if (magnet->display_name != NULL)
+  {
     uri_size += strlen(magnet->display_name) + 4;
   }
 
@@ -70,12 +75,14 @@ char *save_magnet_to_uri(struct FileMagnet *magnet) {
   strncat(uri, base, uri_size - strlen(uri) - 1);
   strncat(uri, hash_hex, uri_size - strlen(uri) - 1);
 
-  if (magnet->display_name != NULL) {
+  if (magnet->display_name != NULL)
+  {
     strncat(uri, "&dn=", uri_size - strlen(uri) - 1);
     strncat(uri, magnet->display_name, uri_size - strlen(uri) - 1);
   }
 
-  if (magnet->exact_length > 0) {
+  if (magnet->exact_length > 0)
+  {
     strncat(uri, "&xl=", uri_size - strlen(uri) - 1);
     strncat(uri, file_size, uri_size - strlen(uri) - 1);
   }
@@ -83,16 +90,19 @@ char *save_magnet_to_uri(struct FileMagnet *magnet) {
   return uri;
 }
 
-struct FileMagnet *parse_magnet_from_uri(char *contents, size_t len) {
+struct FileMagnet *parse_magnet_from_uri(char *contents, size_t len)
+{
   if (len < 1 || !contents)
     return NULL;
 
+  contents[len] = '\0';
   regex_t match;
   regmatch_t matches[3];
   int regex_return_value = 0;
 
   if (regcomp(&match, "^(magnet:\\?xt=urn:sha256:)([A-Fa-f0-9]{64})",
-              REG_EXTENDED)) {
+              REG_EXTENDED))
+  {
     fprintf(stderr, "Could not compile regex\n");
     exit(EXIT_FAILURE);
   }
@@ -109,11 +119,13 @@ struct FileMagnet *parse_magnet_from_uri(char *contents, size_t len) {
   char hash[65] = {0};
   memcpy(hash, contents + matches[2].rm_so,
          matches[2].rm_eo - matches[2].rm_so);
-  for (int i = 0; i < 32; i++) {
+  for (int i = 0; i < 32; i++)
+  {
     sscanf(hash + 2 * i, "%2hhx", &new_magnet->file_hash[i]);
   }
 
-  if (regcomp(&match, "&dn=([^&]*)", REG_EXTENDED)) {
+  if (regcomp(&match, "&dn=([^&]*)", REG_EXTENDED))
+  {
     fprintf(stderr, "Could not compile regex\n");
     exit(EXIT_FAILURE);
   }
@@ -122,7 +134,8 @@ struct FileMagnet *parse_magnet_from_uri(char *contents, size_t len) {
   regfree(&match);
   if (regex_return_value == REG_NOMATCH || regex_return_value != 0)
     new_magnet->display_name = NULL;
-  else {
+  else
+  {
     new_magnet->display_name = (char *)malloc(
         sizeof(char) * (matches[1].rm_eo - matches[1].rm_so) + 1);
     pointer_not_null(
@@ -133,14 +146,16 @@ struct FileMagnet *parse_magnet_from_uri(char *contents, size_t len) {
     new_magnet->display_name[matches[1].rm_eo - matches[1].rm_so] = '\0';
   }
 
-  if (regcomp(&match, "&xl=([^&]*)", REG_EXTENDED)) {
+  if (regcomp(&match, "&xl=([^&]*)", REG_EXTENDED))
+  {
     fprintf(stderr, "Could not compile regex\n");
     exit(EXIT_FAILURE);
   }
 
   regex_return_value = regexec(&match, contents, 2, matches, 0);
   regfree(&match);
-  if (regex_return_value == 0) {
+  if (regex_return_value == 0)
+  {
     char file_size[32] = "";
     memcpy(file_size, contents + matches[1].rm_so,
            (matches[1].rm_eo - matches[1].rm_so));
@@ -158,7 +173,8 @@ struct FileMagnet *parse_magnet_from_uri(char *contents, size_t len) {
   return new_magnet;
 }
 
-void free_magnet(struct FileMagnet *magnet) {
+void free_magnet(struct FileMagnet *magnet)
+{
   if (!magnet)
     return;
 
