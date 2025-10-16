@@ -597,11 +597,23 @@ int handle_rpc_download(struct FileMagnet *file) {
     return -1;
   }
 
+  HashID own_id;
+
+  if (get_own_id(own_id) != 0) {
+    log_msg(LOG_ERROR, "handle_rpc_download get_own_id error");
+    return -1;
+  }
+
   // First check local storage for the key-value pair
   const struct KeyValuePair *local_kv = storage_get_value(file->file_hash);
   if (local_kv) {
     log_msg(LOG_DEBUG, "Key found locally, downloading from local peers");
     for (int i = 0; i < local_kv->num_values; i++) {
+      if (compare_hashes(own_id, local_kv->values[i].peer_id) == 0) {
+        log_msg(LOG_INFO, "We are already one of the peers owning this file, "
+                          "no need to redownload");
+        return 0;
+      }
       if (download_http_file(&local_kv->values[i], file) == 0)
         return 0;
     }

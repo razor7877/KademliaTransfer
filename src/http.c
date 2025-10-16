@@ -131,29 +131,60 @@ static void receive_http_file(const struct pollfd *sock, const char *filename,
     return;
   }
 
+  const char *body_start = strstr(headers, "\r\n\r\n");
+  if (body_start) {
+    body_start += 4;
+    size_t body_bytes_in_buf = 0;
+    if (headers + header_len > body_start) {
+      body_bytes_in_buf = (size_t)(headers + header_len - body_start);
+    }
+    if (body_bytes_in_buf > 0) {
+      size_t to_write = body_bytes_in_buf < content_length ? body_bytes_in_buf
+                                                           : content_length;
+      if (fwrite(body_start, 1, to_write, file) != to_write) {
+        log_msg(LOG_ERROR, "Error writing initial body bytes to file");
+        fclose(file);
+        send_all(sock->fd, internal_server_error,
+                 strlen(internal_server_error));
+        return;
+      }
+      content_length -= to_write;
+    }
+  } else {
+    log_msg(LOG_WARN, "No header terminator found in headers buffer");
+  }
+
   char buffer[CHUNK_SIZE];
   while (content_length > 0) {
-    const size_t to_recv =
+    size_t to_recv =
         content_length < sizeof(buffer) ? content_length : sizeof(buffer);
-    const ssize_t n = recv_all(sock->fd, buffer, to_recv);
-
+    ssize_t n = recv_all(sock->fd, buffer, to_recv);
     if (n < 0) {
       if (errno == EINTR)
         continue;
       if (errno == EAGAIN || errno == EWOULDBLOCK)
         continue;
-
-      send_all(sock->fd, internal_server_error, strlen(internal_server_error));
       log_msg(LOG_ERROR, "recv error: %s", strerror(errno));
+      send_all(sock->fd, internal_server_error, strlen(internal_server_error));
       fclose(file);
       return;
     }
-
-    if (n == 0)
+    if (n == 0) {
+      log_msg(LOG_WARN,
+              "Connection closed while receiving file (remaining=%zu)",
+              content_length);
       break;
-
-    fwrite(buffer, 1, n, file);
-    content_length -= n;
+    }
+    if ((size_t)n > 0) {
+      if (fwrite(buffer, 1, n, file) != (size_t)n) {
+        log_msg(LOG_ERROR, "Error writing to file during upload");
+        send_all(sock->fd, internal_server_error,
+                 strlen(internal_server_error));
+        fclose(file);
+        return;
+      }
+      content_length -= (size_t)n;
+    }
   }
 
   fclose(file);
@@ -194,10 +225,9 @@ void handle_http_request(const struct pollfd *sock, const char *contents,
     log_msg(LOG_INFO, "PUT Request file path: %s\n", file_path);
 
     receive_http_file(sock, file_path, contents, length);
+  } else {
+    send_all(sock->fd, method_not_allowed, strlen(method_not_allowed));
   }
-
-  send_all(sock->fd, method_not_allowed, strlen(method_not_allowed));
-  return;
 }
 
 int download_http_file(const struct Peer *peer, const struct FileMagnet *file) {
@@ -293,7 +323,7 @@ int download_http_file(const struct Peer *peer, const struct FileMagnet *file) {
   while (content_length > 0) {
     const size_t to_recv =
         content_length < sizeof(buffer) ? content_length : sizeof(buffer);
-    const ssize_t n = recv(peer_fd, buffer, to_recv, 0);
+    const ssize_t n = recv_all(peer_fd, buffer, to_recv);
 
     if (n < 0) {
       if (errno == EINTR)
@@ -360,20 +390,44 @@ int upload_http_file(const struct Peer *peer, const struct FileMagnet *file,
     return -1;
   }
 
-  // Receive response
-  char response[256] = {0};
-  ssize_t n = recv(sock, response, sizeof(response) - 1, 0);
-  if (n <= 0) {
-    log_msg(LOG_ERROR, "upload_http_file: no response from peer");
+  char resp_header[HTTP_HEADER_SIZE];
+  ssize_t header_bytes =
+      recv_until(sock, resp_header, sizeof(resp_header), "\r\n\r\n", 4);
+
+  if (header_bytes <= 0) {
+    log_msg(LOG_ERROR, "upload_http_file: failed to read response headers");
     close(sock);
     return -1;
   }
 
-  response[n] = '\0';
-  if (strstr(response, "201 Created")) {
-    log_msg(LOG_INFO, "upload_http_file: file uploaded successfully");
+  resp_header[header_bytes] = '\0';
+  log_msg(LOG_DEBUG, "upload_http_file: response headers:\n%s", resp_header);
+
+  int status_code = 0;
+  if (sscanf(resp_header, "HTTP/%*d.%*d %d", &status_code) == 1) {
+    if (status_code >= 200 && status_code < 300) {
+      log_msg(LOG_INFO, "upload_http_file: success status %d", status_code);
+    } else {
+      log_msg(LOG_WARN, "upload_http_file: non-2xx response %d", status_code);
+    }
   } else {
-    log_msg(LOG_WARN, "upload_http_file: unexpected response: %s", response);
+    log_msg(LOG_WARN, "upload_http_file: cannot parse response status");
+  }
+
+  char *cl = strcasestr_portable(resp_header, "Content-Length:");
+  if (cl) {
+    size_t resp_len = 0;
+    if (sscanf(cl, "Content-Length: %zu", &resp_len) == 1) {
+      size_t remaining = resp_len;
+      char rbuf[CHUNK_SIZE];
+      while (remaining > 0) {
+        size_t to_recv = remaining < sizeof(rbuf) ? remaining : sizeof(rbuf);
+        ssize_t rn = recv(sock, rbuf, to_recv, 0);
+        if (rn <= 0)
+          break;
+        remaining -= rn;
+      }
+    }
   }
 
   close(sock);

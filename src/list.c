@@ -83,17 +83,7 @@ void dist_hash(HashID result, const HashID id1, const HashID id2) {
   }
 }
 
-/**
- * @brief Compare two distances (produced by dist_hash)
- *  It returns:
- *      - -1 if dist1 < dist2
- *      - 1 if dist1 > dist2
- *      - 0 if dist1 = dist2
- * @param dist1 First distance to compare
- * @param dist2 Second distance to compare
- * @return int Comparaison result: -1,0,1
- */
-static int compare_distance(const HashID dist1, const HashID dist2) {
+int compare_hashes(const HashID dist1, const HashID dist2) {
   for (int i = 0; i < SHA256_DIGEST_LENGTH; i++) {
     if (dist1[i] < dist2[i])
       return -1;
@@ -123,7 +113,7 @@ int find_nearest(const struct DList *list, const HashID id,
       n += 1;
     } else {
       for (size_t i = 0; i < n; i++) {
-        if (compare_distance(neighbors_dist[i], current_dist) > 0) {
+        if (compare_hashes(neighbors_dist[i], current_dist) > 0) {
           out_peers[i] = current->peer;
           memcpy(&neighbors_dist[i], &current_dist, sizeof(HashID));
         }

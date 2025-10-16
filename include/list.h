@@ -102,6 +102,18 @@ struct Peer *remove_back(struct DList *list);
 void dist_hash(HashID result, const HashID id1, const HashID id2);
 
 /**
+ * @brief Compare two distances/hashes (produced by dist_hash)
+ *  It returns:
+ *      - -1 if dist1 < dist2
+ *      - 1 if dist1 > dist2
+ *      - 0 if dist1 = dist2
+ * @param dist1 First distance to compare
+ * @param dist2 Second distance to compare
+ * @return int Comparaison result: -1,0,1
+ */
+int compare_hashes(const HashID dist1, const HashID dist2);
+
+/**
  * @brief Finds the nearest node to a hash in the linked list
  *
  * @param list The list in which to search
