@@ -146,7 +146,6 @@ void update_bucket_peers(Buckets bucket, struct Peer *peer)
     if (remove_node(&bucket[bucket_index], finded_peer) == NULL)
       return;
     add_back(&bucket[bucket_index], finded_peer);
-    // to do change to the back
     return;
   }
 
@@ -165,6 +164,6 @@ void update_bucket_peers(Buckets bucket, struct Peer *peer)
   // Make sure to copy whatever data the user gave us
   struct Peer *add = malloc(sizeof(struct Peer));
   *add = *peer;
-
+  add->last_seen = time(NULL);
   add_back(&bucket[bucket_index], add);
 }

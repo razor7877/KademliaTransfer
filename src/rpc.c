@@ -36,7 +36,7 @@ static void handle_ping(struct pollfd *sock, struct RPCPing *data)
       .header = {.magic_number = RPC_MAGIC,
                  .call_type = PING_RESPONSE,
                  .packet_size = sizeof(struct RPCResponse),
-                 .peer = {0}},
+                 .peer = {{0}}},
       .success = true};
 
   struct Peer own;
@@ -65,7 +65,7 @@ static void handle_store(struct pollfd *sock, struct RPCStore *data)
       .header = {.magic_number = RPC_MAGIC,
                  .call_type = STORE_RESPONSE,
                  .packet_size = sizeof(struct RPCResponse),
-                 .peer = {0}},
+                 .peer = {{0}}},
       .success = true};
 
   struct Peer own;
@@ -90,7 +90,7 @@ static void handle_find_node(struct pollfd *sock, struct RPCFind *data)
       .header = {.magic_number = RPC_MAGIC,
                  .call_type = FIND_NODE_RESPONSE,
                  .packet_size = sizeof(struct RPCFindNodeResponse),
-                 .peer = {0}},
+                 .peer = {{0}}},
       .success = true,
       .found_key = false,
       .num_closest = 0,
@@ -143,7 +143,7 @@ static void handle_find_value(struct pollfd *sock, struct RPCFind *data)
       .header = {.magic_number = RPC_MAGIC,
                  .call_type = FIND_VALUE_RESPONSE,
                  .packet_size = sizeof(struct RPCFindValueResponse),
-                 .peer = {0}},
+                 .peer = {{0}}},
       .success = true,
       .found_key = false,
       .values = {{0}},
@@ -252,7 +252,6 @@ void handle_rpc_request(struct pollfd *sock, char *contents, size_t length)
 
   // log_msg(LOG_DEBUG, "Claimed size is: %d - Expected size is: %ld",
   // header->packet_size, expected_size);
-
   if (header->packet_size != expected_size)
   {
     log_msg(LOG_ERROR,
@@ -318,9 +317,9 @@ int handle_rpc_upload(struct FileMagnet *file)
       .header = {.magic_number = RPC_MAGIC,
                  .packet_size = sizeof(struct RPCStore),
                  .call_type = STORE,
-                 .peer = {0}}};
+                 .peer = {{0}}}};
   struct Peer own;
-  if (create_own_peer(&own))
+  if (!create_own_peer(&own))
   {
     struct RPCPeer serialized_own;
     serialize_rpc_peer(&own, &serialized_own);
@@ -432,13 +431,14 @@ int handle_rpc_download(struct FileMagnet *file)
       if (sock < 0)
         continue;
 
-      struct RPCFind find_req = {
-          .header = {.magic_number = RPC_MAGIC,
-                     .call_type = FIND_VALUE,
-                     .packet_size = sizeof(struct RPCFind),
-                     .peer = {0}}};
+      struct RPCFind find_req =
+          {
+              .header = {.magic_number = RPC_MAGIC,
+                         .call_type = FIND_VALUE,
+                         .packet_size = sizeof(struct RPCFind),
+                         .peer = {{0}}}};
       struct Peer own;
-      if (create_own_peer(&own))
+      if (!create_own_peer(&own))
       {
         struct RPCPeer serialized_own;
         serialize_rpc_peer(&own, &serialized_own);
@@ -556,7 +556,70 @@ int handle_rpc_download(struct FileMagnet *file)
   return -1;
 }
 
+// static int generate_random_target(const HashID myID, int bucket, HashID targetID)
+// {
+//   if (bucket < 0 || bucket > 255)
+//     return -1;
+
+//   // 1. Créer une graine pseudo-aléatoire basée sur le bucket
+//   unsigned char seed[64];
+//   snprintf((char *)seed, sizeof(seed), "refresh-bucket-%d", bucket);
+
+//   HashID base;
+//   if (sha256_buf(seed, strlen((char *)seed), base) != 0)
+//     return -1;
+
+//   // 2. Construire la distance dans l'interval du bucket
+//   HashID distance;
+//   memset(distance, 0, SHA256_DIGEST_LENGTH);
+
+//   // mettre le bit du bucket à 1
+//   int byte_index = 31 - (bucket / 8);
+//   int bit_in_byte = bucket % 8;
+//   distance[byte_index] |= (1u << bit_in_byte);
+
+//   // remplir les bits inférieurs avec le hash pseudo-aléatoire
+//   for (int i = 0; i < SHA256_DIGEST_LENGTH; i++)
+//     distance[i] |= base[i] & distance[i];
+
+//   // 3. Calculer targetID = myID XOR distance en utilisant dist_hash()
+//   dist_hash(targetID, myID, distance);
+
+//   return 0;
+// }
+
 void handle_rpc_refresh_bucket()
 {
-  // todo
+  // HashID own;
+
+  // struct RPCFind find_node = {
+  //     .header = {.magic_number = RPC_MAGIC,
+  //                .call_type = FIND_NODE,
+  //                .packet_size = sizeof(struct RPCFind),
+  //                .peer = {{0}}},
+  //     .key = {0}};
+
+  // if (get_own_id(own))
+  //   return;
+  // struct Peer own;
+  // if (create_own_peer(&own))
+  //   return;
+
+  // struct RPCPeer serialized_own;
+  // serialize_rpc_peer(&own, &serialized_own);
+  // find_node.header.peer = serialized_own;
+
+  // for (int i = 0; i < BUCKET_SIZE; i++)
+  // {
+  //   HashID target;
+  //   if (generate_random_target(own, i, target))
+  //     return;
+  //   *find_node.key = *target;
+  //   struct DNode *curr = buckets[i].head;
+  //   for (int i = 0; i < K_VALUE; i++)
+  //   {
+  //     struct pollfd node;
+  //     curr->peer->peer_addr
+  //   }
+  // }
 }
