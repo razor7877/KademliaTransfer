@@ -510,7 +510,7 @@ int connect_to_peer(const struct sockaddr_in *addr)
 
   // Set timeouts so we dont entirely block the client if the peer doesn't
   // respond
-  struct timeval timeout = {.tv_sec = 3, .tv_usec = 0};
+  struct timeval timeout = {.tv_sec = 10, .tv_usec = 0};
   setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
   setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
 

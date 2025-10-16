@@ -1,28 +1,29 @@
 #include "http.h"
 
 #include <ctype.h>
+#include <errno.h>
 #include <poll.h>
 #include <string.h>
-#include <errno.h>
+#include <sys/stat.h>
 
 #include "log.h"
 #include "network.h"
 #include "shared.h"
 
-static const char* not_found =
-    "HTTP/1.1 404 Not Found\r\n"
-    "Content-Type: text/plain\r\n"
-    "Content-Length: 13\r\n"
-    "\r\n"
-    "404 Not Found";
+#define UPLOAD_DIR "./upload"
 
-static const char* method_not_allowed =
-    "HTTP/1.1 405 Method Not Allowed\r\n"
-    "Content-Type: text/plain\r\n"
-    "Content-Length: 23\r\n"
-    "Allow: GET\r\n"
-    "\r\n"
-    "405 Method Not Allowed";
+static const char *not_found = "HTTP/1.1 404 Not Found\r\n"
+                               "Content-Type: text/plain\r\n"
+                               "Content-Length: 13\r\n"
+                               "\r\n"
+                               "404 Not Found";
+
+static const char *method_not_allowed = "HTTP/1.1 405 Method Not Allowed\r\n"
+                                        "Content-Type: text/plain\r\n"
+                                        "Content-Length: 23\r\n"
+                                        "Allow: GET\r\n"
+                                        "\r\n"
+                                        "405 Method Not Allowed";
 
 /**
  * @brief Sends a file back over HTTP
@@ -30,8 +31,11 @@ static const char* method_not_allowed =
  * @param sock The peer socket to which to send the file
  * @param filename The name of the file to send
  */
-static void send_http_file(struct pollfd* sock, const char* filename) {
-  FILE* file = fopen(filename, "rb");
+static void send_http_file(struct pollfd *sock, const char *filename) {
+  char full_path[512] = {0};
+  snprintf(full_path, sizeof(full_path), "%s/%s", UPLOAD_DIR, filename);
+
+  FILE *file = fopen(full_path, "rb");
 
   // If file not present on server
   if (file == NULL) {
@@ -63,7 +67,7 @@ static void send_http_file(struct pollfd* sock, const char* filename) {
   fclose(file);
 }
 
-void handle_http_request(struct pollfd* sock, char* contents, size_t length) {
+void handle_http_request(struct pollfd *sock, char *contents, size_t length) {
   log_msg(LOG_INFO, "Handling HTTP request\n");
 
   if (memcmp(contents, "GET ", 4) != 0) {
@@ -75,7 +79,7 @@ void handle_http_request(struct pollfd* sock, char* contents, size_t length) {
   sscanf(contents, "GET %255s", path);
 
   // Strip leading '/'
-  char* file_path = path + 1;
+  char *file_path = path + 1;
   if (strlen(file_path) == 0) {
     send_all(sock->fd, not_found, strlen(not_found));
     return;
@@ -86,28 +90,30 @@ void handle_http_request(struct pollfd* sock, char* contents, size_t length) {
   send_http_file(sock, file_path);
 }
 
-static char* strcasestr_portable(const char* haystack, const char* needle) {
-  if (!*needle) return (char*)haystack;
+static char *strcasestr_portable(const char *haystack, const char *needle) {
+  if (!*needle)
+    return (char *)haystack;
 
   for (; *haystack; haystack++) {
-    const char* h = haystack;
-    const char* n = needle;
+    const char *h = haystack;
+    const char *n = needle;
     while (*h && *n &&
            tolower((unsigned char)*h) == tolower((unsigned char)*n)) {
       h++;
       n++;
     }
-    if (!*n) return (char*)haystack;
+    if (!*n)
+      return (char *)haystack;
   }
   return NULL;
 }
 
-int download_http_file(const struct Peer* peer, struct FileMagnet* file) {
+int download_http_file(const struct Peer *peer, struct FileMagnet *file) {
   if (!peer) {
     log_msg(LOG_ERROR, "Error in download_http_file peer is null!");
     return -1;
   }
-  
+
   char request[1024] = {0};
   char hash_buf[sizeof(HashID) * 2 + 1] = {0};
 
@@ -132,51 +138,90 @@ int download_http_file(const struct Peer* peer, struct FileMagnet* file) {
   int bytes_send = send_all(peer_fd, request, strlen(request));
   if (bytes_send < 0) {
     log_msg(LOG_ERROR, "Error in download http_file 0 bytes send!");
+    close(peer_fd);
     return -1;
   }
 
-  int header_bytes_read = recv_until(peer_fd, http_header, sizeof(http_header), "\r\n\r\n", 4);
+  int header_bytes_read =
+      recv_until(peer_fd, http_header, sizeof(http_header), "\r\n\r\n", 4);
   if (header_bytes_read <= 0) {
     log_msg(LOG_ERROR, "Error in download http_file response is empty");
+    close(peer_fd);
     return -1;
   }
 
   if (strstr(http_header, "404 Not Found") != NULL) {
-    log_msg(LOG_WARN, "Peer responded with 404 Not Found for file %s", file->display_name);
+    log_msg(LOG_WARN, "Peer responded with 404 Not Found for file %s",
+            file->display_name);
     close(peer_fd);
     return -1;
   }
 
   http_header[header_bytes_read] = '\0';
-  char* content_length_buf = strcasestr_portable(http_header, "Content-Length:");
+  char *content_length_buf =
+      strcasestr_portable(http_header, "Content-Length:");
   size_t content_length = 0;
   if (!content_length_buf) {
     log_msg(LOG_ERROR, "Error in download_http_file content_length not found");
+    close(peer_fd);
     return -1;
   }
 
   sscanf(content_length_buf, "Content-Length: %zu", &content_length);
-
   log_msg(LOG_DEBUG, "Downloading HTTP file with size %zu", content_length);
 
-  FILE* new_file = fopen(file->display_name, "wb");
+  // Create the download folder if not already present
+  const char *download_dir = "./download";
+  if (access(download_dir, F_OK) == -1) {
+    if (mkdir(download_dir, 0755) == -1) {
+      log_msg(LOG_ERROR, "Error creating download directory %s: %s",
+              download_dir, strerror(errno));
+      close(peer_fd);
+      return -1;
+    }
+  }
+
+  // Create path to file in download folder
+  char file_path[512] = {0};
+  snprintf(file_path, sizeof(file_path), "%s/%s", download_dir,
+           file->display_name);
+
+  FILE *new_file = fopen(file_path, "wb");
   if (!new_file) {
-    log_msg(LOG_ERROR, "Error in download_http_file cannot create the file!: %s", strerror(errno));
+    log_msg(LOG_ERROR,
+            "Error in download_http_file cannot create the file!: %s",
+            strerror(errno));
+    close(peer_fd);
     return -1;
   }
 
-  int to_read = content_length;
-  char file_chunk[CHUNK_SIZE] = {0};
+  char buffer[CHUNK_SIZE];
+  while (content_length > 0) {
+    ssize_t to_recv =
+        content_length < sizeof(buffer) ? content_length : sizeof(buffer);
+    ssize_t n = recv(peer_fd, buffer, to_recv, 0);
 
-  while (to_read > 0) {
-    size_t received = recv_all(peer_fd, file_chunk, min(CHUNK_SIZE, to_read));
-    if (received <= 0) break;
-    fwrite(file_chunk, 1, received, new_file);
-    to_read -= received;
+    if (n < 0) {
+      if (errno == EINTR)
+        continue;
+      if (errno == EAGAIN || errno == EWOULDBLOCK)
+        continue;
+      log_msg(LOG_ERROR, "recv error: %s", strerror(errno));
+      fclose(new_file);
+      close(peer_fd);
+      return -1;
+    }
+
+    if (n == 0)
+      break;
+
+    fwrite(buffer, 1, n, new_file);
+    content_length -= n;
   }
 
   fclose(new_file);
   close(peer_fd);
+  log_msg(LOG_INFO, "Downloaded file saved to: %s", file_path);
 
   return 0;
 }

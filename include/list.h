@@ -17,31 +17,33 @@ struct Peer;
  * @brief Represents a single node of a doubly linked list
  *
  */
-struct DNode {
+struct DNode
+{
   /**
    * @brief The value stored for the node
    *
    */
-  struct Peer* peer;
+  struct Peer *peer;
 
   /**
    * @brief The next node in the list, or NULL if there are none
    *
    */
-  struct DNode* next;
+  struct DNode *next;
 
   /**
    * @brief The previous node in the list, or NULL if there are none
    *
    */
-  struct DNode* prev;
+  struct DNode *prev;
 };
 
 /**
  * @brief Implementation of a doubly linked list
  *
  */
-struct DList {
+struct DList
+{
   /**
    * @brief The current number of nodes in the list
    *
@@ -52,13 +54,13 @@ struct DList {
    * @brief The head of the list
    *
    */
-  struct DNode* head;
+  struct DNode *head;
 
   /**
    * @brief The tail of the list
    *
    */
-  struct DNode* tail;
+  struct DNode *tail;
 };
 
 /**
@@ -67,7 +69,7 @@ struct DList {
  * @param list The list to which to add the node
  * @param peer The peer to add to the list
  */
-void add_front(struct DList* list, struct Peer* peer);
+void add_front(struct DList *list, struct Peer *peer);
 
 /**
  * @brief Adds a node to the tail of the linked list
@@ -75,7 +77,7 @@ void add_front(struct DList* list, struct Peer* peer);
  * @param list The list to which to add the node
  * @param peer The peer to add to the list
  */
-void add_back(struct DList* list, struct Peer* peer);
+void add_back(struct DList *list, struct Peer *peer);
 
 /**
  * @brief Removes the node at the front of the list
@@ -83,7 +85,7 @@ void add_back(struct DList* list, struct Peer* peer);
  * @param list The list from which to remove a node
  * @return Peer* The pointer to the popped node, or NULL if there were none
  */
-struct Peer* remove_front(struct DList* list);
+struct Peer *remove_front(struct DList *list);
 
 /**
  * @brief Removes the node at the back of the list
@@ -91,7 +93,7 @@ struct Peer* remove_front(struct DList* list);
  * @param list The list from which to remove a node
  * @return Peer* The pointer to the popped node, or NULL if there were none
  */
-struct Peer* remove_back(struct DList* list);
+struct Peer *remove_back(struct DList *list);
 
 /**
  * @brief Calculate the XOR distance between two HashID
@@ -110,8 +112,8 @@ void dist_hash(HashID result, const HashID id1, const HashID id2);
  * @param max_neighbors
  * @return int
  */
-int find_nearest(const struct DList* list, const HashID id,
-                 struct Peer** out_peers, size_t max_neighbors);
+int find_nearest(const struct DList *list, const HashID id,
+                 struct Peer **out_peers, size_t max_neighbors);
 
 /**
  * @brief Checks if a peer with a given ID exists in the list
@@ -120,11 +122,11 @@ int find_nearest(const struct DList* list, const HashID id,
  * @param id The peer ID to look for
  * @return struct Peer* Pointer to the found peer, or NULL if not found
  */
-struct Peer* find_peer_by_id(const struct DList* list, const HashID id);
+struct Peer *find_peer_by_id(const struct DList *list, const HashID id);
 
 /**
  * @brief Remove the node passed by parameter from the list
  * @param list The list to which to remove the node
  * @param peer The peer to remove from the list
  */
-struct Peer* remove_node(struct DList* list, struct Peer* node);
+struct Peer *remove_node(struct DList *list, struct Peer *node);
